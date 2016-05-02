@@ -55,6 +55,7 @@ struct GameState
 
     MeshList meshes;
     LightList lights;
+    CasterList casters;
 
     size_t resourcetoken;
 

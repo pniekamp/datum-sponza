@@ -307,7 +307,7 @@ void Vulkan::init(HINSTANCE hinstance, HWND hwnd)
 
   VkApplicationInfo appinfo = {};
   appinfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-  appinfo.pApplicationName = "Datum Test";
+  appinfo.pApplicationName = "Datum Sponza";
   appinfo.pEngineName = "Datum";
   appinfo.apiVersion = VK_MAKE_VERSION(1, 0, 8);
 
@@ -373,11 +373,17 @@ void Vulkan::init(HINSTANCE hinstance, HWND hwnd)
 
   const char* deviceextensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
+  VkPhysicalDeviceFeatures devicefeatures = {};
+  devicefeatures.shaderClipDistance = true;
+  devicefeatures.shaderCullDistance = true;
+  devicefeatures.geometryShader = true;
+  devicefeatures.shaderTessellationAndGeometryPointSize = true;
+
   VkDeviceCreateInfo deviceinfo = {};
   deviceinfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
   deviceinfo.queueCreateInfoCount = 1;
   deviceinfo.pQueueCreateInfos = &queueinfo;
-  deviceinfo.pEnabledFeatures = nullptr;
+  deviceinfo.pEnabledFeatures = &devicefeatures;
   deviceinfo.enabledExtensionCount = std::extent<decltype(deviceextensions)>::value;
   deviceinfo.ppEnabledExtensionNames = deviceextensions;
   deviceinfo.enabledLayerCount = std::extent<decltype(validationlayers)>::value;;
@@ -809,7 +815,7 @@ void Window::init(HINSTANCE hinstance, Game *gameptr)
   winclass.hCursor = LoadCursor(NULL, IDC_ARROW);
   winclass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
   winclass.lpszMenuName = nullptr;
-  winclass.lpszClassName = "DatumTest";
+  winclass.lpszClassName = "DatumSponza";
   winclass.hIconSm = LoadIcon(NULL, IDI_WINLOGO);
 
   if (!RegisterClassEx(&winclass))
@@ -821,7 +827,7 @@ void Window::init(HINSTANCE hinstance, Game *gameptr)
   RECT rect = { 0, 0, width, height };
   AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, FALSE, dwexstyle);
 
-  hwnd = CreateWindowEx(dwexstyle, "DatumTest", "Datum Test", dwstyle, CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, NULL, NULL, hinstance, NULL);
+  hwnd = CreateWindowEx(dwexstyle, "DatumSponza", "Datum Sponza", dwstyle, CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, NULL, NULL, hinstance, NULL);
 
   if (!hwnd)
     throw runtime_error("Error creating window");
@@ -989,7 +995,7 @@ void Window::show()
 
 int main(int argc, char *args[])
 {
-  cout << "Datum Test" << endl;
+  cout << "Datum Sponza" << endl;
 
   try
   {

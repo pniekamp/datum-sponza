@@ -217,6 +217,23 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
   buildmeshlist(platform, state, state.writeframe->meshes);
   buildlightlist(platform, state, state.writeframe->lights);
 
+  {
+    CasterList::BuildState buildstate;
+
+    if (state.writeframe->casters.begin(buildstate, platform, state.rendercontext, &state.resources))
+    {
+      for(auto &entity : state.scene.entities<MeshComponent>())
+      {
+        auto instance = state.scene.get_component<MeshComponent>(entity);
+        auto transform = state.scene.get_component<TransformComponent>(entity);
+
+        state.writeframe->casters.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
+      }
+
+      state.writeframe->casters.finalise(buildstate);
+    }
+  }
+
   state.writeframe->resourcetoken = state.resources.token();
 
   state.writeframe = state.readyframe.exchange(state.writeframe);
@@ -253,9 +270,10 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
 
   renderlist.push_meshes(state.readframe->meshes);
   renderlist.push_lights(state.readframe->lights);
+  renderlist.push_casters(state.readframe->casters);
 
   RenderParams renderparams;
-  renderparams.skyboxblend = 0.2;//abs(sin(0.01*state.time));
+  renderparams.skyboxblend = 0.9;//abs(sin(0.01*state.time));
   renderparams.sundirection = normalise(Vec3(renderparams.skyboxblend - 0.5, -1, -0.1));
   renderparams.sunintensity = Color3(renderparams.skyboxblend, renderparams.skyboxblend, renderparams.skyboxblend);
   renderparams.skyboxorientation = Quaternion3f(Vector3(0.0f, 1.0f, 0.0f), 0.1*state.time);

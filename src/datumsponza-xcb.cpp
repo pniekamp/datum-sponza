@@ -1,5 +1,5 @@
 //
-// datumtest.cpp
+// datumsponza.cpp
 //
 
 #include "platform.h"
@@ -11,9 +11,9 @@ using namespace std;
 using namespace leap;
 using namespace DatumPlatform;
 
-void datumtest_init(DatumPlatform::PlatformInterface &platform);
-void datumtest_update(DatumPlatform::PlatformInterface &platform, DatumPlatform::GameInput const &input, float dt);
-void datumtest_render(DatumPlatform::PlatformInterface &platform, DatumPlatform::Viewport const &viewport);
+void datumsponza_init(DatumPlatform::PlatformInterface &platform);
+void datumsponza_update(DatumPlatform::PlatformInterface &platform, DatumPlatform::GameInput const &input, float dt);
+void datumsponza_render(DatumPlatform::PlatformInterface &platform, DatumPlatform::Viewport const &viewport);
 
 
 //|---------------------- Platform ------------------------------------------
@@ -191,9 +191,9 @@ Game::Game()
 ///////////////////////// Game::init ////////////////////////////////////////
 void Game::init(VkPhysicalDevice physicaldevice, VkDevice device)
 {
-  game_init = datumtest_init;
-  game_update = datumtest_update;
-  game_render = datumtest_render;
+  game_init = datumsponza_init;
+  game_update = datumsponza_update;
+  game_render = datumsponza_render;
 
   if (!game_init || !game_update || !game_render)
     throw std::runtime_error("Unable to init game code");
@@ -305,7 +305,7 @@ void Vulkan::init(xcb_connection_t *connection, xcb_window_t window)
 
   VkApplicationInfo appinfo = {};
   appinfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-  appinfo.pApplicationName = "Datum Test";
+  appinfo.pApplicationName = "Datum Sponza";
   appinfo.pEngineName = "Datum";
   appinfo.apiVersion = VK_MAKE_VERSION(1, 0, 8);
 
@@ -371,11 +371,17 @@ void Vulkan::init(xcb_connection_t *connection, xcb_window_t window)
 
   const char* deviceextensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
+  VkPhysicalDeviceFeatures devicefeatures = {};
+  devicefeatures.shaderClipDistance = true;
+  devicefeatures.shaderCullDistance = true;
+  devicefeatures.geometryShader = true;
+  devicefeatures.shaderTessellationAndGeometryPointSize = true;
+
   VkDeviceCreateInfo deviceinfo = {};
   deviceinfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
   deviceinfo.queueCreateInfoCount = 1;
   deviceinfo.pQueueCreateInfos = &queueinfo;
-  deviceinfo.pEnabledFeatures = nullptr;
+  deviceinfo.pEnabledFeatures = &devicefeatures;
   deviceinfo.enabledExtensionCount = std::extent<decltype(deviceextensions)>::value;
   deviceinfo.ppEnabledExtensionNames = deviceextensions;
   deviceinfo.enabledLayerCount = std::extent<decltype(validationlayers)>::value;;
@@ -771,7 +777,7 @@ void Window::init(Game *gameptr)
   auto utf8_string = xcb_intern_atom_reply(connection, xcb_intern_atom(connection, 1, 11, "UTF8_STRING"), 0);
   auto _net_wm_name = xcb_intern_atom_reply(connection, xcb_intern_atom(connection, 1, 12, "_NET_WM_NAME"), 0);
 
-  xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, _net_wm_name->atom, utf8_string->atom, 8, 9, "DatumTest");
+  xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, _net_wm_name->atom, utf8_string->atom, 8, 9, "DatumSponza");
 
   wm_protocols = xcb_intern_atom_reply(connection, xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS"), 0);
 
@@ -975,7 +981,7 @@ void Window::show()
 
 int main(int argc, char *args[])
 {
-  cout << "Datum Test" << endl;
+  cout << "Datum Sponza" << endl;
 
   try
   {
