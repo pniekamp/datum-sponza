@@ -8,6 +8,7 @@
 #include <windowsx.h>
 #include <vulkan/vulkan.h>
 #include <iostream>
+#include <algorithm>
 
 using namespace std;
 using namespace leap;
@@ -277,7 +278,6 @@ struct Vulkan
   VkQueue queue;
 
   VkSurfaceKHR surface;
-  VkSurfaceFormatKHR surfaceformat;
 
   VkSwapchainKHR swapchain;
   VkSwapchainCreateInfoKHR swapchaininfo;
@@ -457,10 +457,8 @@ void Vulkan::init(HINSTANCE hinstance, HWND hwnd)
   vector<VkSurfaceFormatKHR> formats(formatscount);
   vkGetPhysicalDeviceSurfaceFormatsKHR(physicaldevice, surface, &formatscount, formats.data());
 
-  surfaceformat = formats[0];
-
-  if (surfaceformat.format == VK_FORMAT_UNDEFINED)
-    surfaceformat.format = VK_FORMAT_B8G8R8A8_UNORM;
+  if (!any_of(formats.begin(), formats.end(), [](VkSurfaceFormatKHR surface) { return (surface.format == VK_FORMAT_B8G8R8A8_SRGB); }))
+    throw runtime_error("Vulkan vkGetPhysicalDeviceSurfaceFormatsKHR error");
 
   //
   // Swap Chain
@@ -497,8 +495,8 @@ void Vulkan::init(HINSTANCE hinstance, HWND hwnd)
   swapchaininfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
   swapchaininfo.surface = surface;
   swapchaininfo.minImageCount = desiredimages;
-  swapchaininfo.imageFormat = surfaceformat.format;
-  swapchaininfo.imageColorSpace = surfaceformat.colorSpace;
+  swapchaininfo.imageFormat = VK_FORMAT_B8G8R8A8_SRGB;
+  swapchaininfo.imageColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
   swapchaininfo.imageExtent = surfacecapabilities.currentExtent;
   swapchaininfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
   swapchaininfo.preTransform = pretransform;
@@ -841,7 +839,7 @@ void Window::init(HINSTANCE hinstance, Game *gameptr)
   keysym[VK_CONTROL] = KB_KEY_CONTROL;
   keysym[VK_LEFT] = KB_KEY_LEFT; keysym[VK_DOWN] = KB_KEY_DOWN; keysym[VK_RIGHT] = KB_KEY_RIGHT; keysym[VK_UP] = KB_KEY_UP;
   keysym[VK_F1] = KB_KEY_F1;  keysym[VK_F2] = KB_KEY_F2;  keysym[VK_F3] = KB_KEY_F3;  keysym[VK_F4] = KB_KEY_F4;  keysym[VK_F5] = KB_KEY_F5;  keysym[VK_F6] = KB_KEY_F6;  keysym[VK_F7] = KB_KEY_F7;  keysym[VK_F8] = KB_KEY_F8;  keysym[VK_F9] = KB_KEY_F9;  keysym[VK_F10] = KB_KEY_F10;
-  keysym['1'] = '1';  keysym['2'] = '2';  keysym['3'] = '3';  keysym['4'] = '4';  keysym['5'] = '5';  keysym['6'] = '6';  keysym['7'] = '7';  keysym['8'] = '8';  keysym['9'] = '9';  keysym['0'] = '0';  keysym['-'] = '-';  keysym['='] = '=';  keysym[VK_BACK] = KB_KEY_BACKSPACE;
+  keysym['1'] = '1';  keysym['2'] = '2';  keysym['3'] = '3';  keysym['4'] = '4';  keysym['5'] = '5';  keysym['6'] = '6';  keysym['7'] = '7';  keysym['8'] = '8';  keysym['9'] = '9';  keysym['0'] = '0';  keysym[VK_OEM_MINUS] = '-';  keysym[VK_OEM_PLUS] = '=';  keysym[VK_BACK] = KB_KEY_BACKSPACE;
   keysym['Q'] = 'Q';  keysym['W'] = 'W';  keysym['E'] = 'E';  keysym['R'] = 'R';  keysym['T'] = 'T';  keysym['Y'] = 'Y';  keysym['U'] = 'U';  keysym['I'] = 'I';  keysym['O'] = 'O';  keysym['P'] = 'P';  keysym['['] = '[';  keysym[']'] = ']';  keysym['\\'] = '\\';
   keysym['A'] = 'A';  keysym['S'] = 'S';  keysym['D'] = 'D';  keysym['F'] = 'F';  keysym['G'] = 'G';  keysym['H'] = 'H';  keysym['J'] = 'J';  keysym['K'] = 'K';  keysym['L'] = 'L';  keysym[':'] = ':';  keysym['\''] = '\'';
   keysym['Z'] = 'Z';  keysym['X'] = 'X';  keysym['C'] = 'C';  keysym['V'] = 'V';  keysym['B'] = 'B';  keysym['N'] = 'N';  keysym['M'] = 'M';  keysym[','] = ',';  keysym['.'] = '.';  keysym['/'] = '/';

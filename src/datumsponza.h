@@ -36,6 +36,7 @@ struct GameState
   Font const *debugfont;
   Mesh const *unitsphere;
   Material const *defaultmaterial;
+  Skybox const *skybox;
 
   AssetManager assets;
 
