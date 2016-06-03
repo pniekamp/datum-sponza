@@ -178,38 +178,47 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
 
   state.time += dt;
 
-  if (input.mousebuttons[GameInput::Left].state == true)
+  bool inputaccepted = false;
+
+  update_debug_overlay(input, &inputaccepted);
+
+  if (!inputaccepted)
   {
-    state.camera.yaw(0.0025f * (state.lastmousex - input.mousex), Vec3(0.0f, 1.0f, 0.0f));
-    state.camera.pitch(0.0025f * (state.lastmousey - input.mousey));
+    if (input.mousebuttons[GameInput::Left].state == true)
+    {
+      state.camera.yaw(1.5f * (state.lastmousex - input.mousex), Vec3(0.0f, 1.0f, 0.0f));
+      state.camera.pitch(1.5f * (state.lastmousey - input.mousey));
+    }
+
+    float speed = 0.02;
+
+    if (input.modifiers & GameInput::Shift)
+      speed *= 10;
+
+    if (input.controllers[0].move_up.state == true && !(input.modifiers & GameInput::Control))
+      state.camera.offset(speed*Vec3(0.0f, 0.0f, -1.0f));
+
+    if (input.controllers[0].move_down.state == true && !(input.modifiers & GameInput::Control))
+      state.camera.offset(speed*Vec3(0.0f, 0.0f, 1.0f));
+
+    if (input.controllers[0].move_up.state == true && (input.modifiers & GameInput::Control))
+      state.camera.offset(speed*Vec3(0.0f, 1.0f, 0.0f));
+
+    if (input.controllers[0].move_down.state == true && (input.modifiers & GameInput::Control))
+      state.camera.offset(speed*Vec3(0.0f, -1.0f, 0.0f));
+
+    if (input.controllers[0].move_left.state == true)
+      state.camera.offset(speed*Vec3(-1.0f, 0.0f, 0.0f));
+
+    if (input.controllers[0].move_right.state == true)
+      state.camera.offset(speed*Vec3(+1.0f, 0.0f, 0.0f));
   }
-
-  float speed = 0.02;
-
-  if (input.modifiers & GameInput::Shift)
-    speed *= 10;
-
-  if (input.controllers[0].move_up.state == true && !(input.modifiers & GameInput::Control))
-    state.camera.offset(speed*Vec3(0.0f, 0.0f, -1.0f));
-
-  if (input.controllers[0].move_down.state == true && !(input.modifiers & GameInput::Control))
-    state.camera.offset(speed*Vec3(0.0f, 0.0f, 1.0f));
-
-  if (input.controllers[0].move_up.state == true && (input.modifiers & GameInput::Control))
-    state.camera.offset(speed*Vec3(0.0f, 1.0f, 0.0f));
-
-  if (input.controllers[0].move_down.state == true && (input.modifiers & GameInput::Control))
-    state.camera.offset(speed*Vec3(0.0f, -1.0f, 0.0f));
-
-  if (input.controllers[0].move_left.state == true)
-    state.camera.offset(speed*Vec3(-1.0f, 0.0f, 0.0f));
-
-  if (input.controllers[0].move_right.state == true)
-    state.camera.offset(speed*Vec3(+1.0f, 0.0f, 0.0f));
 
   state.lastmousex = input.mousex;
   state.lastmousey = input.mousey;
   state.lastmousez = input.mousez;
+
+  state.camera.set_exposure(4.0f);
 
   state.camera = normalise(state.camera);
 
@@ -239,8 +248,6 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
   state.writeframe->resourcetoken = state.resources.token();
 
   state.writeframe = state.readyframe.exchange(state.writeframe);
-
-  update_debug_overlay(input);
 
   END_TIMED_BLOCK(Update)
 }
@@ -280,10 +287,13 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
   renderlist.push_casters(state.readframe->casters);
 
   RenderParams renderparams;
+  renderparams.ssao = false;
+  renderparams.width = viewport.width;
+  renderparams.height = viewport.height;
   renderparams.skybox = state.skybox;
   renderparams.sundirection = normalise(Vec3(0.4, -1, -0.1));
   renderparams.sunintensity = Color3(5, 5, 5);
-  renderparams.skyboxorientation = Transform::rotation(Vec3(0.0f, 1.0f, 0.0f), 0.1*state.readframe->time);
+  renderparams.skyboxorientation = Transform::rotation(Vec3(0.0f, 1.0f, 0.0f), -0.1*state.readframe->time);
 
   render_debug_overlay(platform, state.rendercontext, &state.resources, renderlist, viewport, state.debugfont);
 
