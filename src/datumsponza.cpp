@@ -55,7 +55,7 @@ void datumsponza_init(PlatformInterface &platform)
   state.unitsphere = state.resources.create<Mesh>(state.assets.find(CoreAsset::unit_sphere));
   state.defaultmaterial = state.resources.create<Material>(state.assets.find(CoreAsset::default_material));
 
-  state.skybox = state.resources.create<Skybox>(state.assets.find(CoreAsset::default_skybox));
+  state.skybox = state.resources.create<SkyBox>(state.assets.find(CoreAsset::default_skybox));
 
   state.scene.load<Model>(platform, &state.resources, state.assets.load(platform, "sponza.pack"));
 
@@ -74,6 +74,14 @@ void datumsponza_init(PlatformInterface &platform)
   auto light4 = state.scene.create<Entity>();
   state.scene.add_component<TransformComponent>(light4, Transform::translation(Vec3(-6.20,1.45,1.45)));
   state.scene.add_component<PointLightComponent>(light4, Color3(1, 0.4, 0), Attenuation(0.4f, 0.0f, 1.0f));
+
+  auto envmaps = state.assets.load(platform, "sponza-env.pack");
+  state.envmaps[0] = make_tuple(Vec3(-0.625f, 2.45f, -0.4f), Vec3(28, 5, 5.2), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 0)));
+  state.envmaps[1] = make_tuple(Vec3(-0.625f, 1.95f, 4.1f), Vec3(28, 4, 4.1), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 1)));
+  state.envmaps[2] = make_tuple(Vec3(-0.625f, 1.95f, -4.65f), Vec3(28, 4, 3.6), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 2)));
+  state.envmaps[3] = make_tuple(Vec3(0.0f, 9.0f, 0.0f), Vec3(30, 10, 15), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 3)));
+
+  //  state.skybox = state.resources.create<SkyBox>(state.assets.find(envmaps->id + 1));
 
   state.camera.set_position(Vec3(0.0f, 1.0f, 0.0f));
   state.camera.lookat(Vec3(1, 1, 0), Vec3(0, 1, 0));
@@ -218,7 +226,7 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
   state.lastmousey = input.mousey;
   state.lastmousez = input.mousez;
 
-  state.camera.set_exposure(4.0f);
+  state.camera.set_exposure(3.0f);
 
   state.camera = normalise(state.camera);
 
@@ -286,14 +294,24 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
   renderlist.push_lights(state.readframe->lights);
   renderlist.push_casters(state.readframe->casters);
 
+  for(auto &envmap : state.envmaps)
+  {
+    state.resources.request(platform, get<2>(envmap));
+
+    renderlist.push_environment(Transform::translation(get<0>(envmap)), get<1>(envmap), get<2>(envmap));
+  }
+
   RenderParams renderparams;
   renderparams.ssao = false;
   renderparams.width = viewport.width;
   renderparams.height = viewport.height;
+  renderparams.aspect = state.aspect;
   renderparams.skybox = state.skybox;
   renderparams.sundirection = normalise(Vec3(0.4, -1, -0.1));
-  renderparams.sunintensity = Color3(5, 5, 5);
+  renderparams.sunintensity = Color3(2, 2, 2);
   renderparams.skyboxorientation = Transform::rotation(Vec3(0.0f, 1.0f, 0.0f), -0.1*state.readframe->time);
+
+  DEBUG_MENU_ENTRY("Sun Direction", renderparams.sundirection = normalise(debug_menu_value("Sun Direction", renderparams.sundirection, Vec3(-1), Vec3(1))))
 
   render_debug_overlay(platform, state.rendercontext, &state.resources, renderlist, viewport, state.debugfont);
 

@@ -7,3 +7,7 @@ The Atrium Sponza Palace, Dubrovnik, is an elegant and improved model created by
 However, nowadays it is considered as a simple model, thus it was decided to crate a new model with highly improved appearance and scene complexity. It is donated to the public for  radiosity and is represented in several different formats (3ds, Obj) for use with various commercial 3D applications and renderers.
 
 http://www.crytek.com/cryengine/cryengine3/downloads
+
+PBR Textures from
+
+http://www.alexandre-pestana.com/pbr-textures-sponza/

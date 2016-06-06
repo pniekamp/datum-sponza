@@ -36,7 +36,9 @@ struct GameState
   Font const *debugfont;
   Mesh const *unitsphere;
   Material const *defaultmaterial;
-  Skybox const *skybox;
+  SkyBox const *skybox;
+
+  std::tuple<Vec3, Vec3, EnvMap const *> envmaps[4];
 
   AssetManager assets;
 

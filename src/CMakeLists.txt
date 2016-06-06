@@ -33,6 +33,16 @@ if(WIN32)
 endif(WIN32)
 
 #
+# envmapgen
+#
+
+include_directories(${DATUM_TOOLS})
+
+add_executable(envmapgen envmapgen.cpp platform.h platform.cpp ${DATUM_TOOLS}/assetpacker.cpp ${DATUM_TOOLS}/bc3.cpp ${DATUM_TOOLS}/hdr.cpp ${DATUM_TOOLS}/ibl.cpp)
+
+target_link_libraries(envmapgen leap datum vulkan)
+
+#
 # install
 #
 
