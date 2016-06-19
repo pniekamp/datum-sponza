@@ -287,7 +287,7 @@ void initialise_platform(Platform &platform, int width, int height, size_t gamem
 void image_render_envmap(Platform &platform, RenderContext &context, Vec3 position, PushBuffer const &renderables, RenderParams const &params, int width, int height, void *bits)
 {
   Camera camera;
-  camera.set_exposure(5);
+  camera.set_exposure(1);
   camera.set_projection(pi<float>()/2, 1);
   camera.set_position(position);
 
@@ -399,12 +399,11 @@ int main(int argc, char **argv)
     assets.load(platform, "core.pack");
 
     RenderParams renderparams;
-    renderparams.ssao = true;
-    renderparams.bloom = false;
     renderparams.width = platform.viewport.width;
     renderparams.height = platform.viewport.height;
     renderparams.aspect = 1.0;
     renderparams.sunintensity = Color3(0, 0, 0);
+    renderparams.bloomstrength = 0;
 
     while (!prepare_render_context(platform, rendercontext, &assets))
       ;

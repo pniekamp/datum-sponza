@@ -81,7 +81,7 @@ void datumsponza_init(PlatformInterface &platform)
   state.envmaps[2] = make_tuple(Vec3(-0.625f, 1.95f, -4.65f), Vec3(28, 4, 3.6), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 2)));
   state.envmaps[3] = make_tuple(Vec3(0.0f, 9.0f, 0.0f), Vec3(30, 10, 15), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 3)));
 
-  //  state.skybox = state.resources.create<SkyBox>(state.assets.find(envmaps->id + 1));
+//  state.skybox = state.resources.create<SkyBox>(state.assets.find(envmaps->id + 0));
 
   state.camera.set_position(Vec3(0.0f, 1.0f, 0.0f));
   state.camera.lookat(Vec3(1, 1, 0), Vec3(0, 1, 0));
@@ -226,7 +226,7 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
   state.lastmousey = input.mousey;
   state.lastmousez = input.mousez;
 
-  state.camera.set_exposure(3.0f);
+  state.camera = adapt(state.camera, state.rendercontext.luminance, 0.1f, 0.5f*dt);
 
   state.camera = normalise(state.camera);
 
@@ -276,6 +276,8 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
 
   if (!state.skybox->ready())
   {
+    asset_guard lock(&state.assets);
+
     state.resources.request(platform, state.skybox);
   }
 
@@ -302,16 +304,18 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
   }
 
   RenderParams renderparams;
-  renderparams.ssao = false;
   renderparams.width = viewport.width;
   renderparams.height = viewport.height;
   renderparams.aspect = state.aspect;
   renderparams.skybox = state.skybox;
   renderparams.sundirection = normalise(Vec3(0.4, -1, -0.1));
-  renderparams.sunintensity = Color3(2, 2, 2);
+  renderparams.sunintensity = Color3(8.0, 7.56, 7.88);
   renderparams.skyboxorientation = Transform::rotation(Vec3(0.0f, 1.0f, 0.0f), -0.1*state.readframe->time);
+  renderparams.ssaoscale = 0;
 
-  DEBUG_MENU_ENTRY("Sun Direction", renderparams.sundirection = normalise(debug_menu_value("Sun Direction", renderparams.sundirection, Vec3(-1), Vec3(1))))
+  DEBUG_MENU_ENTRY("Lighting/Sun Direction", renderparams.sundirection = normalise(debug_menu_value("Lighting/Sun Direction", renderparams.sundirection, Vec3(-1), Vec3(1))))
+  DEBUG_MENU_VALUE("Lighting/SSR Strength", &renderparams.ssrstrength, 0.0f, 8.0f);
+  DEBUG_MENU_VALUE("Lighting/Bloom Strength", &renderparams.bloomstrength, 0.0f, 8.0f);
 
   render_debug_overlay(platform, state.rendercontext, &state.resources, renderlist, viewport, state.debugfont);
 
