@@ -35,7 +35,7 @@ class Platform : public PlatformInterface
 
     handle_t open_handle(const char *identifier) override;
 
-    void read_handle(handle_t handle, uint64_t position, void *buffer, size_t n) override;
+    void read_handle(handle_t handle, uint64_t position, void *buffer, size_t bytes) override;
 
     void close_handle(handle_t handle) override;
 
@@ -75,9 +75,9 @@ PlatformInterface::handle_t Platform::open_handle(const char *identifier)
   return new FileHandle(pathstring(identifier).c_str());
 }
 
-void Platform::read_handle(PlatformInterface::handle_t handle, uint64_t position, void *buffer, size_t n)
+void Platform::read_handle(PlatformInterface::handle_t handle, uint64_t position, void *buffer, size_t bytes)
 {
-  static_cast<FileHandle*>(handle)->read(position, buffer, n);
+  static_cast<FileHandle*>(handle)->read(position, buffer, bytes);
 }
 
 void Platform::close_handle(PlatformInterface::handle_t handle)
@@ -209,6 +209,7 @@ void initialise_platform(Platform &platform, int width, int height, size_t gamem
   devicefeatures.shaderCullDistance = true;
   devicefeatures.geometryShader = true;
   devicefeatures.shaderTessellationAndGeometryPointSize = true;
+  devicefeatures.shaderStorageImageWriteWithoutFormat = true;
 
   VkDeviceCreateInfo deviceinfo = {};
   deviceinfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -292,7 +293,7 @@ void image_render_envmap(Platform &platform, RenderContext &context, Vec3 positi
   camera.set_position(position);
 
   Color4 *src = (Color4*)(platform.viewportmemory);
-  uint32_t *dst = (uint32_t*)((char*)bits + sizeof(PackImagePayload));
+  uint32_t *dst = (uint32_t*)bits;
 
   // Right
 
@@ -503,31 +504,31 @@ int main(int argc, char **argv)
     int layers = 6;
     int levels = 8;
 
-    vector<char> payload(sizeof(PackImagePayload) + image_datasize(width, height, layers, levels));
+    vector<char> payload(image_datasize(width, height, layers, levels));
 
     image_render_envmap(platform, rendercontext, Vec3(-0.625f, 2.5f, -0.4f), renderlist, renderparams, width, height, payload.data());
 
     image_buildmips_cube_ibl(width, height, levels, payload.data());
 
-    write_imag_asset(fout, 0, width, height, layers, levels, payload.data(), 0.0f, 0.0f);
+    write_imag_asset(fout, 0, width, height, layers, levels, PackImageHeader::rgbe, payload.data(), 0.0f, 0.0f);
 
     image_render_envmap(platform, rendercontext, Vec3(-0.625f, 2.0f, 4.1f), renderlist, renderparams, width, height, payload.data());
 
     image_buildmips_cube_ibl(width, height, levels, payload.data());
 
-    write_imag_asset(fout, 1, width, height, layers, levels, payload.data(), 0.0f, 0.0f);
+    write_imag_asset(fout, 1, width, height, layers, levels, PackImageHeader::rgbe, payload.data(), 0.0f, 0.0f);
 
     image_render_envmap(platform, rendercontext, Vec3(-0.625f, 2.0f, -4.65f), renderlist, renderparams, width, height, payload.data());
 
     image_buildmips_cube_ibl(width, height, levels, payload.data());
 
-    write_imag_asset(fout, 2, width, height, layers, levels, payload.data(), 0.0f, 0.0f);
+    write_imag_asset(fout, 2, width, height, layers, levels, PackImageHeader::rgbe, payload.data(), 0.0f, 0.0f);
 
     image_render_envmap(platform, rendercontext, Vec3(0.0f, 9.0f, 0.0f), renderlist, renderparams, width, height, payload.data());
 
     image_buildmips_cube_ibl(width, height, levels, payload.data());
 
-    write_imag_asset(fout, 3, width, height, layers, levels, payload.data(), 0.0f, 0.0f);
+    write_imag_asset(fout, 3, width, height, layers, levels, PackImageHeader::rgbe, payload.data(), 0.0f, 0.0f);
 
     write_chunk(fout, "HEND", 0, nullptr);
 
