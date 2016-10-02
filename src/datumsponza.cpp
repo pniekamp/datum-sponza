@@ -60,31 +60,30 @@ void datumsponza_init(PlatformInterface &platform)
   state.scene.load<Model>(platform, &state.resources, state.assets.load(platform, "sponza.pack"));
 
   auto light1 = state.scene.create<Entity>();
-  state.scene.add_component<TransformComponent>(light1, Transform::translation(Vec3(4.85,1.45,1.45)));
-  state.scene.add_component<PointLightComponent>(light1, Color3(1, 0.5, 0), Attenuation(0.4f, 0.0f, 1.0f));
+  state.scene.add_component<TransformComponent>(light1, Transform::translation(Vec3(4.85f, 1.45f, 1.45f)));
+  state.scene.add_component<PointLightComponent>(light1, Color3(1.0f, 0.5f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
 
   auto light2 = state.scene.create<Entity>();
-  state.scene.add_component<TransformComponent>(light2, Transform::translation(Vec3(4.85,1.45,-2.20)));
-  state.scene.add_component<PointLightComponent>(light2, Color3(1, 0.3, 0), Attenuation(0.4f, 0.0f, 1.0f));
+  state.scene.add_component<TransformComponent>(light2, Transform::translation(Vec3(4.85f, 1.45f, -2.20f)));
+  state.scene.add_component<PointLightComponent>(light2, Color3(1.0f, 0.3f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
 
   auto light3 = state.scene.create<Entity>();
-  state.scene.add_component<TransformComponent>(light3, Transform::translation(Vec3(-6.20,1.45,-2.20)));
-  state.scene.add_component<PointLightComponent>(light3, Color3(1, 0.5, 0), Attenuation(0.4f, 0.0f, 1.0f));
+  state.scene.add_component<TransformComponent>(light3, Transform::translation(Vec3(-6.20f, 1.45f, -2.20f)));
+  state.scene.add_component<PointLightComponent>(light3, Color3(1.0f, 0.5f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
 
   auto light4 = state.scene.create<Entity>();
-  state.scene.add_component<TransformComponent>(light4, Transform::translation(Vec3(-6.20,1.45,1.45)));
-  state.scene.add_component<PointLightComponent>(light4, Color3(1, 0.4, 0), Attenuation(0.4f, 0.0f, 1.0f));
+  state.scene.add_component<TransformComponent>(light4, Transform::translation(Vec3(-6.20f, 1.45f, 1.45f)));
+  state.scene.add_component<PointLightComponent>(light4, Color3(1.0f, 0.4f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
 
   auto envmaps = state.assets.load(platform, "sponza-env.pack");
-  state.envmaps[0] = make_tuple(Vec3(-0.625f, 2.45f, -0.4f), Vec3(28, 5, 5.2), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 0)));
-  state.envmaps[1] = make_tuple(Vec3(-0.625f, 1.95f, 4.1f), Vec3(28, 4, 4.1), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 1)));
-  state.envmaps[2] = make_tuple(Vec3(-0.625f, 1.95f, -4.65f), Vec3(28, 4, 3.6), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 2)));
-  state.envmaps[3] = make_tuple(Vec3(0.0f, 9.0f, 0.0f), Vec3(30, 10, 15), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 3)));
+  state.envmaps[0] = make_tuple(Vec3(-0.625f, 2.45f, -0.4f), Vec3(28.0f, 5.0f, 5.2f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 0)));
+  state.envmaps[1] = make_tuple(Vec3(-0.625f, 1.95f, 4.1f), Vec3(28.0f, 4.0f, 4.1f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 1)));
+  state.envmaps[2] = make_tuple(Vec3(-0.625f, 1.95f, -4.65f), Vec3(28.0f, 4, 3.6f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 2)));
+  state.envmaps[3] = make_tuple(Vec3(0.0f, 9.0f, 0.0f), Vec3(30.0f, 10.0f, 15.0f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 3)));
 
 //  state.skybox = state.resources.create<SkyBox>(state.assets.find(envmaps->id + 0));
 
-  state.camera.set_position(Vec3(0.0f, 1.0f, 0.0f));
-  state.camera.lookat(Vec3(1, 1, 0), Vec3(0, 1, 0));
+  state.camera.lookat(Vec3(0, 1, 0), Vec3(1, 1, 0), Vec3(0, 1, 0));
 }
 
 
@@ -107,7 +106,7 @@ void buildmeshlist(PlatformInterface &platform, GameState &state, MeshList &mesh
         {
           for(auto subtree = branch, end = next(branch); subtree != end; ++subtree)
           {
-            for(auto &entity: *subtree)
+            for(auto &entity : *subtree)
             {
               auto instance = state.scene.get_component<MeshComponent>(entity);
               auto transform = state.scene.get_component<TransformComponent>(entity);
@@ -120,7 +119,7 @@ void buildmeshlist(PlatformInterface &platform, GameState &state, MeshList &mesh
         }
         else
         {
-          for(auto &entity: *branch)
+          for(auto &entity : *branch)
           {
             if (intersects(frustum, meshstorage->bound(entity)))
             {
@@ -180,7 +179,7 @@ void buildlightlist(PlatformInterface &platform, GameState &state, LightList &li
 ///////////////////////// game_update ///////////////////////////////////////
 void datumsponza_update(PlatformInterface &platform, GameInput const &input, float dt)
 {
-  BEGIN_TIMED_BLOCK(Update, Color3(1.0, 1.0, 0.4))
+  BEGIN_TIMED_BLOCK(Update, Color3(1.0f, 1.0f, 0.4f))
 
   GameState &state = *static_cast<GameState*>(platform.gamememory.data);
 
@@ -194,7 +193,7 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
   {
     if (input.mousebuttons[GameInput::Left].state == true)
     {
-      state.camera.yaw(1.5f * (state.lastmousex - input.mousex), Vec3(0.0f, 1.0f, 0.0f));
+      state.camera.yaw(1.5f * (state.lastmousex - input.mousex), Vec3(0, 1, 0));
       state.camera.pitch(1.5f * (state.lastmousey - input.mousey));
     }
 
@@ -204,22 +203,22 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
       speed *= 10;
 
     if (input.controllers[0].move_up.state == true && !(input.modifiers & GameInput::Control))
-      state.camera.offset(speed*Vec3(0.0f, 0.0f, -1.0f));
+      state.camera.offset(speed*Vec3(0, 0, -1));
 
     if (input.controllers[0].move_down.state == true && !(input.modifiers & GameInput::Control))
-      state.camera.offset(speed*Vec3(0.0f, 0.0f, 1.0f));
+      state.camera.offset(speed*Vec3(0, 0, 1));
 
     if (input.controllers[0].move_up.state == true && (input.modifiers & GameInput::Control))
-      state.camera.offset(speed*Vec3(0.0f, 1.0f, 0.0f));
+      state.camera.offset(speed*Vec3(0, 1, 0));
 
     if (input.controllers[0].move_down.state == true && (input.modifiers & GameInput::Control))
-      state.camera.offset(speed*Vec3(0.0f, -1.0f, 0.0f));
+      state.camera.offset(speed*Vec3(0, -1, 0));
 
     if (input.controllers[0].move_left.state == true)
-      state.camera.offset(speed*Vec3(-1.0f, 0.0f, 0.0f));
+      state.camera.offset(speed*Vec3(-1, 0, 0));
 
     if (input.controllers[0].move_right.state == true)
-      state.camera.offset(speed*Vec3(+1.0f, 0.0f, 0.0f));
+      state.camera.offset(speed*Vec3(1, 0, 0));
   }
 
   state.lastmousex = input.mousex;
@@ -286,7 +285,7 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
 
   state.readframe = state.readyframe.exchange(state.readframe);
 
-  BEGIN_TIMED_BLOCK(Render, Color3(0.0, 0.2, 1.0))
+  BEGIN_TIMED_BLOCK(Render, Color3(0.0f, 0.2f, 1.0f))
 
   auto &camera = state.readframe->camera;
 
@@ -308,9 +307,9 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
   renderparams.height = viewport.height;
   renderparams.aspect = state.aspect;
   renderparams.skybox = state.skybox;
-  renderparams.sundirection = normalise(Vec3(0.4, -1, -0.1));
-  renderparams.sunintensity = Color3(8.0, 7.56, 7.88);
-  renderparams.skyboxorientation = Transform::rotation(Vec3(0.0f, 1.0f, 0.0f), -0.1*state.readframe->time);
+  renderparams.sundirection = normalise(Vec3(0.4f, -1.0f, -0.1f));
+  renderparams.sunintensity = Color3(8.0f, 7.56f, 7.88f);
+  renderparams.skyboxorientation = Transform::rotation(Vec3(0, 1, 0), -0.1*state.readframe->time);
   renderparams.ssaoscale = 0;
 
   DEBUG_MENU_ENTRY("Lighting/Sun Direction", renderparams.sundirection = normalise(debug_menu_value("Lighting/Sun Direction", renderparams.sundirection, Vec3(-1), Vec3(1))))
