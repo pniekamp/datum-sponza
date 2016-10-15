@@ -495,6 +495,6 @@ int main(int argc, char **argv)
   }
   catch(exception &e)
   {
-    cerr << "Critical Error: " << e.what() << endl;
+    cerr << "Critical Error:" << e.what() << endl;
   }
 }
