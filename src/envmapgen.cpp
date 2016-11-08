@@ -307,7 +307,7 @@ void initialise_renderer(Platform &platform, Renderer &renderer, int width, int 
 void image_render_envmap(Renderer &platform, Vec3 position, PushBuffer const &renderables, int width, int height, void *bits)
 {
   Camera camera;
-  camera.set_exposure(1);
+  camera.set_exposure(5);
   camera.set_projection(pi<float>()/2, 1);
   camera.set_position(position);
 
@@ -366,6 +366,7 @@ int main(int argc, char **argv)
     initialise_renderer(platform, renderer, 128, 128, 64*1024, 128*1024*1024, 16*1024*1024);
 
     renderer.renderparams.sunintensity = Color3(0, 0, 0);
+    renderer.renderparams.ssrstrength = 0;
     renderer.renderparams.bloomstrength = 0;
 
     Scene scene(platform.gamememory);
@@ -453,6 +454,8 @@ int main(int argc, char **argv)
 
       renderlist.push_lights(lights);
     }
+
+    cout << "Generating..." << endl;
 
     ofstream fout("sponza-env.pack", ios::binary | ios::trunc);
 

@@ -313,7 +313,7 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
   renderparams.ssaoscale = 0;
 
   DEBUG_MENU_ENTRY("Lighting/Sun Direction", renderparams.sundirection = normalise(debug_menu_value("Lighting/Sun Direction", renderparams.sundirection, Vec3(-1), Vec3(1))))
-  DEBUG_MENU_VALUE("Lighting/SSR Strength", &renderparams.ssrstrength, 0.0f, 8.0f);
+  DEBUG_MENU_VALUE("Lighting/SSR Strength", &renderparams.ssrstrength, 0.0f, 80.0f);
   DEBUG_MENU_VALUE("Lighting/Bloom Strength", &renderparams.bloomstrength, 0.0f, 8.0f);
 
   render_debug_overlay(platform, state.rendercontext, &state.resources, renderlist, viewport, state.debugfont);
