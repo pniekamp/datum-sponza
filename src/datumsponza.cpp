@@ -44,9 +44,12 @@ void datumsponza_init(PlatformInterface &platform)
   state.scene.initialise_component_storage<TransformComponent>();
   state.scene.initialise_component_storage<SpriteComponent>();
   state.scene.initialise_component_storage<MeshComponent>();
-  state.scene.initialise_component_storage<LightComponent>();
+  state.scene.initialise_component_storage<PointLightComponent>();
 
-  state.assets.load(platform, "core.pack");
+  auto core = state.assets.load(platform, "core.pack");
+
+  if (core->magic != CoreAsset::magic || core->version != CoreAsset::version)
+    throw runtime_error("Core Assets Version Mismatch");
 
   state.loader = state.resources.create<Sprite>(state.assets.find(CoreAsset::loader_image));
 
@@ -54,6 +57,9 @@ void datumsponza_init(PlatformInterface &platform)
 
   state.unitsphere = state.resources.create<Mesh>(state.assets.find(CoreAsset::unit_sphere));
   state.defaultmaterial = state.resources.create<Material>(state.assets.find(CoreAsset::default_material));
+
+  state.sundirection = Vec3(0.3698,-0.9245,-0.09245);
+  state.sunintensity = Color3(8.0f, 7.56f, 7.88f);
 
   state.skybox = state.resources.create<SkyBox>(state.assets.find(CoreAsset::default_skybox));
 
@@ -97,6 +103,7 @@ void buildmeshlist(PlatformInterface &platform, GameState &state, MeshList &mesh
     auto frustum = state.camera.frustum();
 
     auto meshstorage = state.scene.system<MeshComponentStorage>();
+    auto transformstorage = state.scene.system<TransformComponentStorage>();
 
     for(auto branch = meshstorage->tree().begin(), end = meshstorage->tree().end(); branch != end; ++branch)
     {
@@ -108,8 +115,8 @@ void buildmeshlist(PlatformInterface &platform, GameState &state, MeshList &mesh
           {
             for(auto &entity : *subtree)
             {
-              auto instance = state.scene.get_component<MeshComponent>(entity);
-              auto transform = state.scene.get_component<TransformComponent>(entity);
+              auto instance = meshstorage->get(entity);
+              auto transform = transformstorage->get(entity);
 
               meshes.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
             }
@@ -121,10 +128,11 @@ void buildmeshlist(PlatformInterface &platform, GameState &state, MeshList &mesh
         {
           for(auto &entity : *branch)
           {
-            if (intersects(frustum, meshstorage->bound(entity)))
+            auto instance = meshstorage->get(entity);
+
+            if (intersects(frustum, instance.bound()))
             {
-              auto instance = state.scene.get_component<MeshComponent>(entity);
-              auto transform = state.scene.get_component<TransformComponent>(entity);
+              auto transform = transformstorage->get(entity);
 
               meshes.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
             }
@@ -137,16 +145,107 @@ void buildmeshlist(PlatformInterface &platform, GameState &state, MeshList &mesh
 
     for(auto &entity : meshstorage->dynamic())
     {
-      if (intersects(frustum, meshstorage->bound(entity)))
+      auto instance = meshstorage->get(entity);
+
+      if (intersects(frustum, instance.bound()))
       {
-        auto instance = state.scene.get_component<MeshComponent>(entity);
-        auto transform = state.scene.get_component<TransformComponent>(entity);
+        auto transform = transformstorage->get(entity);
 
         meshes.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
       }
     }
 
     meshes.finalise(buildstate);
+  }
+}
+
+
+///////////////////////// buildcasterlist ///////////////////////////////////
+void buildcasterlist(PlatformInterface &platform, GameState &state, CasterList &casters)
+{
+  CasterList::BuildState buildstate;
+
+  if (casters.begin(buildstate, platform, state.rendercontext, &state.resources))
+  {
+    const float znear = 0.1f;
+    const float zfar = state.rendercontext.shadows.shadowsplitfar;
+    const float extrusion = 1000.0f;
+
+    auto camerafrustum = state.camera.frustum(znear, zfar + 1.0f);
+
+    auto lightpos = camerafrustum.centre() - extrusion * state.sundirection;
+
+    auto lightview = Transform::lookat(lightpos, lightpos + state.sundirection, Vec3(0, 1, 0));
+
+    auto invlightview = inverse(lightview);
+
+    Vec3 mincorner(std::numeric_limits<float>::max());
+    Vec3 maxcorner(std::numeric_limits<float>::lowest());
+
+    for(size_t i = 1; i < 8; ++i)
+    {
+      auto corner = invlightview * camerafrustum.corners[i];
+
+      mincorner = lml::min(mincorner, corner);
+      maxcorner = lml::max(maxcorner, corner);
+    }
+
+    auto frustum = lightview * Frustum::orthographic(mincorner.x, mincorner.y, maxcorner.x, maxcorner.y, 0.1f, extrusion + maxcorner.z - mincorner.z);
+
+    auto meshstorage = state.scene.system<MeshComponentStorage>();
+    auto transformstorage = state.scene.system<TransformComponentStorage>();
+
+    for(auto branch = meshstorage->tree().begin(), end = meshstorage->tree().end(); branch != end; ++branch)
+    {
+      if (intersects(frustum, branch.bound()))
+      {
+        if (contains(frustum, branch.bound()))
+        {
+          for(auto subtree = branch, end = next(branch); subtree != end; ++subtree)
+          {
+            for(auto &entity : *subtree)
+            {
+              auto instance = meshstorage->get(entity);
+              auto transform = transformstorage->get(entity);
+
+              casters.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
+            }
+
+            subtree.descend();
+          }
+        }
+        else
+        {
+          for(auto &entity : *branch)
+          {
+            auto instance = meshstorage->get(entity);
+
+            if (intersects(frustum, instance.bound()))
+            {
+              auto transform = transformstorage->get(entity);
+
+              casters.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
+            }
+          }
+
+          branch.descend();
+        }
+      }
+    }
+
+    for(auto &entity : meshstorage->dynamic())
+    {
+      auto instance = meshstorage->get(entity);
+
+      if (intersects(frustum, instance.bound()))
+      {
+        auto transform = transformstorage->get(entity);
+
+        casters.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
+      }
+    }
+
+    casters.finalise(buildstate);
   }
 }
 
@@ -160,10 +259,13 @@ void buildlightlist(PlatformInterface &platform, GameState &state, LightList &li
   {
     auto frustum = state.camera.frustum();
 
-    for(auto &entity : state.scene.entities<PointLightComponent>())
+    auto lightstorage = state.scene.system<PointLightComponentStorage>();
+    auto transformstorage = state.scene.system<TransformComponentStorage>();
+
+    for(auto &entity : lightstorage->entities())
     {
-      auto light = state.scene.get_component<PointLightComponent>(entity);
-      auto transform = state.scene.get_component<TransformComponent>(entity);
+      auto light = lightstorage->get(entity);
+      auto transform = transformstorage->get(entity);
 
       if (intersects(frustum, Sphere(transform.world().translation(), light.range())))
       {
@@ -229,28 +331,14 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
 
   state.camera = normalise(state.camera);
 
+  DEBUG_MENU_ENTRY("Lighting/Sun Direction", state.sundirection = normalise(debug_menu_value("Lighting/Sun Direction", state.sundirection, Vec3(-1), Vec3(1))))
+
   state.writeframe->time = state.time;
   state.writeframe->camera = state.camera;
 
   buildmeshlist(platform, state, state.writeframe->meshes);
+  buildcasterlist(platform, state, state.writeframe->casters);
   buildlightlist(platform, state, state.writeframe->lights);
-
-  {
-    CasterList::BuildState buildstate;
-
-    if (state.writeframe->casters.begin(buildstate, platform, state.rendercontext, &state.resources))
-    {
-      for(auto &entity : state.scene.entities<MeshComponent>())
-      {
-        auto instance = state.scene.get_component<MeshComponent>(entity);
-        auto transform = state.scene.get_component<TransformComponent>(entity);
-
-        state.writeframe->casters.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
-      }
-
-      state.writeframe->casters.finalise(buildstate);
-    }
-  }
 
   state.writeframe->resourcetoken = state.resources.token();
 
@@ -307,12 +395,12 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
   renderparams.height = viewport.height;
   renderparams.aspect = state.aspect;
   renderparams.skybox = state.skybox;
-  renderparams.sundirection = normalise(Vec3(0.4f, -1.0f, -0.1f));
-  renderparams.sunintensity = Color3(8.0f, 7.56f, 7.88f);
+  renderparams.sundirection = state.sundirection;
+  renderparams.sunintensity = state.sunintensity;
   renderparams.skyboxorientation = Transform::rotation(Vec3(0, 1, 0), -0.1*state.readframe->time);
-  renderparams.ssaoscale = 0;
+  renderparams.ssaoscale = 0.0f;
+  renderparams.ssrstrength = 16.0f;
 
-  DEBUG_MENU_ENTRY("Lighting/Sun Direction", renderparams.sundirection = normalise(debug_menu_value("Lighting/Sun Direction", renderparams.sundirection, Vec3(-1), Vec3(1))))
   DEBUG_MENU_VALUE("Lighting/SSR Strength", &renderparams.ssrstrength, 0.0f, 80.0f);
   DEBUG_MENU_VALUE("Lighting/Bloom Strength", &renderparams.bloomstrength, 0.0f, 8.0f);
 

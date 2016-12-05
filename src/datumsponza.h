@@ -45,6 +45,9 @@ struct GameState
 
   RenderContext rendercontext;
 
+  lml::Vec3 sundirection;
+  lml::Color3 sunintensity;
+
   Scene scene;
 
   // Render Frames

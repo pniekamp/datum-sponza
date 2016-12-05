@@ -373,7 +373,7 @@ int main(int argc, char **argv)
 
     scene.initialise_component_storage<TransformComponent>();
     scene.initialise_component_storage<MeshComponent>();
-    scene.initialise_component_storage<LightComponent>();
+    scene.initialise_component_storage<PointLightComponent>();
 
     auto model = scene.load<Model>(platform, &renderer.resources, renderer.assets.load(platform, "sponza.pack"));
 
