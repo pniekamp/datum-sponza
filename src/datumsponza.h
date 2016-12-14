@@ -50,6 +50,9 @@ struct GameState
 
   Scene scene;
 
+  Scene::EntityId model;
+  Scene::EntityId lights[4];
+
   // Render Frames
 
   struct RenderFrame

@@ -135,13 +135,13 @@ void initialise_platform(Platform &platform, size_t gamememorysize)
   while (queueindex < queuecount && !(queueproperties[queueindex].queueFlags & VK_QUEUE_GRAPHICS_BIT))
     ++queueindex;
 
-  array<float, 1> queuepriorities = { 0.0f };
+  float queuepriorities[] = { 0.0f, 0.0f };
 
   VkDeviceQueueCreateInfo queueinfo = {};
   queueinfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
   queueinfo.queueFamilyIndex = queueindex;
-  queueinfo.queueCount = 2;
-  queueinfo.pQueuePriorities = queuepriorities.data();
+  queueinfo.queueCount = extentof(queuepriorities);
+  queueinfo.pQueuePriorities = queuepriorities;
 
   VkPhysicalDeviceFeatures devicefeatures = {};
   devicefeatures.shaderClipDistance = true;
@@ -149,6 +149,7 @@ void initialise_platform(Platform &platform, size_t gamememorysize)
   devicefeatures.geometryShader = true;
   devicefeatures.shaderTessellationAndGeometryPointSize = true;
   devicefeatures.shaderStorageImageWriteWithoutFormat = true;
+  devicefeatures.independentBlend = true;
 
   VkDeviceCreateInfo deviceinfo = {};
   deviceinfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -307,7 +308,7 @@ void initialise_renderer(Platform &platform, Renderer &renderer, int width, int 
 void image_render_envmap(Renderer &platform, Vec3 position, PushBuffer const &renderables, int width, int height, void *bits)
 {
   Camera camera;
-  camera.set_exposure(5);
+  camera.set_exposure(15);
   camera.set_projection(pi<float>()/2, 1);
   camera.set_position(position);
 
@@ -376,22 +377,6 @@ int main(int argc, char **argv)
     scene.initialise_component_storage<PointLightComponent>();
 
     auto model = scene.load<Model>(platform, &renderer.resources, renderer.assets.load(platform, "sponza.pack"));
-
-    auto light1 = scene.create<Entity>();
-    scene.add_component<TransformComponent>(light1, Transform::translation(Vec3(4.85f, 1.45f, 1.45f)));
-    scene.add_component<PointLightComponent>(light1, Color3(1.0f, 0.5f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
-
-    auto light2 = scene.create<Entity>();
-    scene.add_component<TransformComponent>(light2, Transform::translation(Vec3(4.85f, 1.45f, -2.20f)));
-    scene.add_component<PointLightComponent>(light2, Color3(1.0f, 0.3f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
-
-    auto light3 = scene.create<Entity>();
-    scene.add_component<TransformComponent>(light3, Transform::translation(Vec3(-6.20f, 1.45f, -2.20f)));
-    scene.add_component<PointLightComponent>(light3, Color3(1.0f, 0.5f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
-
-    auto light4 = scene.create<Entity>();
-    scene.add_component<TransformComponent>(light4, Transform::translation(Vec3(-6.20f, 1.45f, 1.45f)));
-    scene.add_component<PointLightComponent>(light4, Color3(1.0f, 0.4f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
 
     for(auto &mesh : scene.get<Model>(model)->meshes)
     {
@@ -468,19 +453,19 @@ int main(int argc, char **argv)
 
     vector<char> payload(image_datasize(width, height, layers, levels));
 
-    image_render_envmap(renderer, Vec3(-0.625f, 2.5f, -0.4f), renderlist, width, height, payload.data());
+    image_render_envmap(renderer, Vec3(-0.625f, 2.45f, -0.35f), renderlist, width, height, payload.data());
 
     image_buildmips_cube_ibl(width, height, levels, payload.data());
 
     write_imag_asset(fout, 0, width, height, layers, levels, PackImageHeader::rgbe, payload.data());
 
-    image_render_envmap(renderer, Vec3(-0.625f, 2.0f, 4.1f), renderlist, width, height, payload.data());
+    image_render_envmap(renderer, Vec3(-0.625f, 1.95f, 3.9f), renderlist, width, height, payload.data());
 
     image_buildmips_cube_ibl(width, height, levels, payload.data());
 
     write_imag_asset(fout, 1, width, height, layers, levels, PackImageHeader::rgbe, payload.data());
 
-    image_render_envmap(renderer, Vec3(-0.625f, 2.0f, -4.65f), renderlist, width, height, payload.data());
+    image_render_envmap(renderer, Vec3(-0.625f, 1.95f, -4.6f), renderlist, width, height, payload.data());
 
     image_buildmips_cube_ibl(width, height, levels, payload.data());
 

@@ -63,28 +63,28 @@ void datumsponza_init(PlatformInterface &platform)
 
   state.skybox = state.resources.create<SkyBox>(state.assets.find(CoreAsset::default_skybox));
 
-  state.scene.load<Model>(platform, &state.resources, state.assets.load(platform, "sponza.pack"));
+  state.model = state.scene.load<Model>(platform, &state.resources, state.assets.load(platform, "sponza.pack"));
 
-  auto light1 = state.scene.create<Entity>();
-  state.scene.add_component<TransformComponent>(light1, Transform::translation(Vec3(4.85f, 1.45f, 1.45f)));
-  state.scene.add_component<PointLightComponent>(light1, Color3(1.0f, 0.5f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
+  state.lights[0] = state.scene.create<Entity>();
+  state.scene.add_component<TransformComponent>(state.lights[0], Transform::translation(Vec3(4.85f, 1.45f, 1.45f)));
+  state.scene.add_component<PointLightComponent>(state.lights[0], Color3(1.0f, 0.5f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
 
-  auto light2 = state.scene.create<Entity>();
-  state.scene.add_component<TransformComponent>(light2, Transform::translation(Vec3(4.85f, 1.45f, -2.20f)));
-  state.scene.add_component<PointLightComponent>(light2, Color3(1.0f, 0.3f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
+  state.lights[1] = state.scene.create<Entity>();
+  state.scene.add_component<TransformComponent>(state.lights[1], Transform::translation(Vec3(4.85f, 1.45f, -2.20f)));
+  state.scene.add_component<PointLightComponent>(state.lights[1], Color3(1.0f, 0.3f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
 
-  auto light3 = state.scene.create<Entity>();
-  state.scene.add_component<TransformComponent>(light3, Transform::translation(Vec3(-6.20f, 1.45f, -2.20f)));
-  state.scene.add_component<PointLightComponent>(light3, Color3(1.0f, 0.5f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
+  state.lights[2] = state.scene.create<Entity>();
+  state.scene.add_component<TransformComponent>(state.lights[2], Transform::translation(Vec3(-6.20f, 1.45f, -2.20f)));
+  state.scene.add_component<PointLightComponent>(state.lights[2], Color3(1.0f, 0.5f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
 
-  auto light4 = state.scene.create<Entity>();
-  state.scene.add_component<TransformComponent>(light4, Transform::translation(Vec3(-6.20f, 1.45f, 1.45f)));
-  state.scene.add_component<PointLightComponent>(light4, Color3(1.0f, 0.4f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
+  state.lights[3] = state.scene.create<Entity>();
+  state.scene.add_component<TransformComponent>(state.lights[3], Transform::translation(Vec3(-6.20f, 1.45f, 1.45f)));
+  state.scene.add_component<PointLightComponent>(state.lights[3], Color3(1.0f, 0.4f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
 
   auto envmaps = state.assets.load(platform, "sponza-env.pack");
-  state.envmaps[0] = make_tuple(Vec3(-0.625f, 2.45f, -0.4f), Vec3(28.0f, 5.0f, 5.2f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 0)));
-  state.envmaps[1] = make_tuple(Vec3(-0.625f, 1.95f, 4.1f), Vec3(28.0f, 4.0f, 4.1f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 1)));
-  state.envmaps[2] = make_tuple(Vec3(-0.625f, 1.95f, -4.65f), Vec3(28.0f, 4, 3.6f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 2)));
+  state.envmaps[0] = make_tuple(Vec3(-0.625f, 2.45f, -0.35f), Vec3(28.0f, 5.0f, 4.8f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 0)));
+  state.envmaps[1] = make_tuple(Vec3(-0.625f, 1.95f, 3.9f), Vec3(28.0f, 4.0f, 3.7f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 1)));
+  state.envmaps[2] = make_tuple(Vec3(-0.625f, 1.95f, -4.6f), Vec3(28.0f, 4.0f, 3.7f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 2)));
   state.envmaps[3] = make_tuple(Vec3(0.0f, 9.0f, 0.0f), Vec3(30.0f, 10.0f, 15.0f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 3)));
 
 //  state.skybox = state.resources.create<SkyBox>(state.assets.find(envmaps->id + 0));
@@ -330,6 +330,24 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
   state.camera = adapt(state.camera, state.rendercontext.luminance, 0.1f, 0.5f*dt);
 
   state.camera = normalise(state.camera);
+
+  Color3 lampintensity = Color3(8.0f, 8.0f, 8.0f);
+  DEBUG_MENU_VALUE("Scene/Lamp Intensity", &lampintensity, Color3(0.0f, 0.0f, 0.0f), Color3(16.0f, 16.0f, 16.0f));
+
+  for(auto &light : state.lights)
+  {
+    auto lightcomponent = state.scene.get_component<PointLightComponent>(light);
+
+    lightcomponent.set_intensity(lampintensity);
+  }
+
+  float floorroughness = 0.0f;
+  DEBUG_MENU_VALUE("Scene/Floor Roughness", &floorroughness, 0.0f, 1.0f);
+
+  if (auto model = state.scene.get<Model>(state.model))
+  {
+    state.resources.update(model->materials[8], Color3(1.0f, 1.0f, 1.0f), 0.0f, floorroughness, 1.0f, 0.0f);
+  }
 
   DEBUG_MENU_ENTRY("Lighting/Sun Direction", state.sundirection = normalise(debug_menu_value("Lighting/Sun Direction", state.sundirection, Vec3(-1), Vec3(1))))
 
