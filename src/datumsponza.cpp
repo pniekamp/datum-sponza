@@ -113,7 +113,7 @@ void buildmeshlist(PlatformInterface &platform, GameState &state, MeshList &mesh
         {
           for(auto subtree = branch, end = next(branch); subtree != end; ++subtree)
           {
-            for(auto &entity : *subtree)
+            for(auto &entity : subtree.items())
             {
               auto instance = meshstorage->get(entity);
               auto transform = transformstorage->get(entity);
@@ -126,7 +126,7 @@ void buildmeshlist(PlatformInterface &platform, GameState &state, MeshList &mesh
         }
         else
         {
-          for(auto &entity : *branch)
+          for(auto &entity : branch.items())
           {
             auto instance = meshstorage->get(entity);
 
@@ -203,7 +203,7 @@ void buildcasterlist(PlatformInterface &platform, GameState &state, CasterList &
         {
           for(auto subtree = branch, end = next(branch); subtree != end; ++subtree)
           {
-            for(auto &entity : *subtree)
+            for(auto &entity : subtree.items())
             {
               auto instance = meshstorage->get(entity);
               auto transform = transformstorage->get(entity);
@@ -216,7 +216,7 @@ void buildcasterlist(PlatformInterface &platform, GameState &state, CasterList &
         }
         else
         {
-          for(auto &entity : *branch)
+          for(auto &entity : branch.items())
           {
             auto instance = meshstorage->get(entity);
 
@@ -417,7 +417,7 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
   renderparams.sunintensity = state.sunintensity;
   renderparams.skyboxorientation = Transform::rotation(Vec3(0, 1, 0), -0.1*state.readframe->time);
   renderparams.ssaoscale = 0.0f;
-  renderparams.ssrstrength = 16.0f;
+  renderparams.ssrstrength = 4.0f;
 
   DEBUG_MENU_VALUE("Lighting/SSR Strength", &renderparams.ssrstrength, 0.0f, 80.0f);
   DEBUG_MENU_VALUE("Lighting/Bloom Strength", &renderparams.bloomstrength, 0.0f, 8.0f);
