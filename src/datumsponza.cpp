@@ -354,6 +354,8 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
   state.writeframe->time = state.time;
   state.writeframe->camera = state.camera;
 
+  asset_guard lock(&state.assets);
+
   buildmeshlist(platform, state, state.writeframe->meshes);
   buildcasterlist(platform, state, state.writeframe->casters);
   buildlightlist(platform, state, state.writeframe->lights);
@@ -403,7 +405,12 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
 
   for(auto &envmap : state.envmaps)
   {
-    state.resources.request(platform, get<2>(envmap));
+    if (!get<2>(envmap)->ready())
+    {
+      asset_guard lock(&state.assets);
+
+      state.resources.request(platform, get<2>(envmap));
+    }
 
     renderlist.push_environment(Transform::translation(get<0>(envmap)), get<1>(envmap), get<2>(envmap));
   }
