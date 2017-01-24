@@ -45,6 +45,7 @@ void datumsponza_init(PlatformInterface &platform)
   state.scene.initialise_component_storage<SpriteComponent>();
   state.scene.initialise_component_storage<MeshComponent>();
   state.scene.initialise_component_storage<PointLightComponent>();
+  state.scene.initialise_component_storage<ParticleSystemComponent>();
 
   auto core = state.assets.load(platform, "core.pack");
 
@@ -63,23 +64,41 @@ void datumsponza_init(PlatformInterface &platform)
 
   state.skybox = state.resources.create<SkyBox>(state.assets.find(CoreAsset::default_skybox));
 
+  state.fire = new(allocate<ParticleSystem>(platform.gamememory)) ParticleSystem({ platform.gamememory, state.particlefreelist });
+
+  {
+    auto fire = state.assets.load(platform, "fire.pack");
+
+    if (fire)
+    {
+      asset_guard lock(state.assets);
+
+      while (!state.fire->load(platform, &state.resources, state.assets.find(fire->id + 1)))
+        ;
+    }
+  }
+
   state.model = state.scene.load<Model>(platform, &state.resources, state.assets.load(platform, "sponza.pack"));
 
   state.lights[0] = state.scene.create<Entity>();
-  state.scene.add_component<TransformComponent>(state.lights[0], Transform::translation(Vec3(4.85f, 1.45f, 1.45f)));
+  state.scene.add_component<TransformComponent>(state.lights[0], Transform::translation(Vec3(4.85f, 1.35f, 1.45f)));
   state.scene.add_component<PointLightComponent>(state.lights[0], Color3(1.0f, 0.5f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
+  state.scene.add_component<ParticleSystemComponent>(state.lights[0], state.fire, (long)ParticleSystemComponent::Visible);
 
   state.lights[1] = state.scene.create<Entity>();
-  state.scene.add_component<TransformComponent>(state.lights[1], Transform::translation(Vec3(4.85f, 1.45f, -2.20f)));
+  state.scene.add_component<TransformComponent>(state.lights[1], Transform::translation(Vec3(4.85f, 1.35f, -2.20f)));
   state.scene.add_component<PointLightComponent>(state.lights[1], Color3(1.0f, 0.3f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
+  state.scene.add_component<ParticleSystemComponent>(state.lights[1], state.fire, (long)ParticleSystemComponent::Visible);
 
   state.lights[2] = state.scene.create<Entity>();
-  state.scene.add_component<TransformComponent>(state.lights[2], Transform::translation(Vec3(-6.20f, 1.45f, -2.20f)));
+  state.scene.add_component<TransformComponent>(state.lights[2], Transform::translation(Vec3(-6.20f, 1.35f, -2.20f)));
   state.scene.add_component<PointLightComponent>(state.lights[2], Color3(1.0f, 0.5f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
+  state.scene.add_component<ParticleSystemComponent>(state.lights[2], state.fire, (long)ParticleSystemComponent::Visible);
 
   state.lights[3] = state.scene.create<Entity>();
-  state.scene.add_component<TransformComponent>(state.lights[3], Transform::translation(Vec3(-6.20f, 1.45f, 1.45f)));
+  state.scene.add_component<TransformComponent>(state.lights[3], Transform::translation(Vec3(-6.20f, 1.35f, 1.45f)));
   state.scene.add_component<PointLightComponent>(state.lights[3], Color3(1.0f, 0.4f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
+  state.scene.add_component<ParticleSystemComponent>(state.lights[3], state.fire, (long)ParticleSystemComponent::Visible);
 
   auto envmaps = state.assets.load(platform, "sponza-env.pack");
   state.envmaps[0] = make_tuple(Vec3(-0.625f, 2.45f, -0.35f), Vec3(28.0f, 5.0f, 4.8f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 0)));
@@ -93,10 +112,10 @@ void datumsponza_init(PlatformInterface &platform)
 }
 
 
-///////////////////////// buildmeshlist /////////////////////////////////////
-void buildmeshlist(PlatformInterface &platform, GameState &state, MeshList &meshes)
+///////////////////////// buildgeometrylist /////////////////////////////////
+void buildgeometrylist(PlatformInterface &platform, GameState &state, GeometryList &meshes)
 {
-  MeshList::BuildState buildstate;
+  GeometryList::BuildState buildstate;
 
   if (meshes.begin(buildstate, platform, state.rendercontext, &state.resources))
   {
@@ -156,6 +175,32 @@ void buildmeshlist(PlatformInterface &platform, GameState &state, MeshList &mesh
     }
 
     meshes.finalise(buildstate);
+  }
+}
+
+
+///////////////////////// buildobjectlist ///////////////////////////////////
+void buildobjectlist(PlatformInterface &platform, GameState &state, ForwardList &objects)
+{
+  ForwardList::BuildState buildstate;
+
+  if (objects.begin(buildstate, platform, state.rendercontext, &state.resources))
+  {
+    auto frustum = state.camera.frustum();
+
+    auto particlestorage = state.scene.system<ParticleSystemComponentStorage>();
+
+    for(auto &entity : particlestorage->entities())
+    {
+      auto particles = particlestorage->get(entity);
+
+      if (intersects(frustum, particles.bound()))
+      {
+        objects.push_particlesystem(buildstate, particles.instance());
+      }
+    }
+
+    objects.finalise(buildstate);
   }
 }
 
@@ -351,12 +396,17 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
 
   DEBUG_MENU_ENTRY("Lighting/Sun Direction", state.sundirection = normalise(debug_menu_value("Lighting/Sun Direction", state.sundirection, Vec3(-1), Vec3(1))))
 
+  update_mesh_bounds(state.scene);
+  update_particlesystem_bounds(state.scene);
+  update_particlesystems(state.scene, state.camera, dt);
+
+  asset_guard lock(state.assets);
+
   state.writeframe->time = state.time;
   state.writeframe->camera = state.camera;
 
-  asset_guard lock(&state.assets);
-
-  buildmeshlist(platform, state, state.writeframe->meshes);
+  buildgeometrylist(platform, state, state.writeframe->geometry);
+  buildobjectlist(platform, state, state.writeframe->objects);
   buildcasterlist(platform, state, state.writeframe->casters);
   buildlightlist(platform, state, state.writeframe->lights);
 
@@ -383,9 +433,19 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
 
   if (!state.skybox->ready())
   {
-    asset_guard lock(&state.assets);
+    asset_guard lock(state.assets);
 
     state.resources.request(platform, state.skybox);
+  }
+
+  for(auto &envmap : state.envmaps)
+  {
+    if (!get<2>(envmap)->ready())
+    {
+      asset_guard lock(state.assets);
+
+      state.resources.request(platform, get<2>(envmap));
+    }
   }
 
   while (state.readyframe.load()->time <= state.readframe->time)
@@ -399,19 +459,13 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
 
   RenderList renderlist(platform.renderscratchmemory, 8*1024*1024);
 
-  renderlist.push_meshes(state.readframe->meshes);
-  renderlist.push_lights(state.readframe->lights);
   renderlist.push_casters(state.readframe->casters);
+  renderlist.push_geometry(state.readframe->geometry);
+  renderlist.push_objects(state.readframe->objects);
+  renderlist.push_lights(state.readframe->lights);
 
   for(auto &envmap : state.envmaps)
   {
-    if (!get<2>(envmap)->ready())
-    {
-      asset_guard lock(&state.assets);
-
-      state.resources.request(platform, get<2>(envmap));
-    }
-
     renderlist.push_environment(Transform::translation(get<0>(envmap)), get<1>(envmap), get<2>(envmap));
   }
 

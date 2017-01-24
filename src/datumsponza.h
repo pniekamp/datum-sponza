@@ -37,6 +37,8 @@ struct GameState
   Material const *defaultmaterial;
   SkyBox const *skybox;
 
+  ParticleSystem *fire;
+
   std::tuple<Vec3, Vec3, EnvMap const *> envmaps[4];
 
   AssetManager assets;
@@ -44,6 +46,8 @@ struct GameState
   ResourceManager resources;
 
   RenderContext rendercontext;
+
+  FreeList particlefreelist;
 
   lml::Vec3 sundirection;
   lml::Color3 sunintensity;
@@ -61,9 +65,10 @@ struct GameState
 
     Camera camera;
 
-    MeshList meshes;
-    LightList lights;
     CasterList casters;
+    GeometryList geometry;
+    ForwardList objects;
+    LightList lights;
 
     size_t resourcetoken;
 

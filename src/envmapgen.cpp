@@ -400,23 +400,23 @@ int main(int argc, char **argv)
     RenderList renderlist(platform.gamememory, 1*1024*1024);
 
     {
-      MeshList meshes;
-      MeshList::BuildState buildstate;
+      GeometryList geometry;
+      GeometryList::BuildState buildstate;
 
-      if (meshes.begin(buildstate, platform, renderer.rendercontext, &renderer.resources))
+      if (geometry.begin(buildstate, platform, renderer.rendercontext, &renderer.resources))
       {       
         for(auto &entity : scene.entities<MeshComponent>())
         {
           auto instance = scene.get_component<MeshComponent>(entity);
           auto transform = scene.get_component<TransformComponent>(entity);
 
-          meshes.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
+          geometry.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
         }
 
-        meshes.finalise(buildstate);
+        geometry.finalise(buildstate);
       }
 
-      renderlist.push_meshes(meshes);
+      renderlist.push_geometry(geometry);
     }
 
     {
