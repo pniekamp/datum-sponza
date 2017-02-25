@@ -42,9 +42,9 @@ class Platform : public PlatformInterface
 
     void terminate() override;
 
-  private:
+  protected:
 
-    VulkanDevice vulkan;
+    RenderDevice renderdevice;
 
     WorkQueue m_workqueue;
 
@@ -53,7 +53,7 @@ class Platform : public PlatformInterface
 
 RenderDevice Platform::render_device()
 {
-  return { vulkan.physicaldevice, vulkan.device };
+  return renderdevice;
 }
 
 PlatformInterface::handle_t Platform::open_handle(const char *identifier)
@@ -160,7 +160,18 @@ void initialise_platform(Platform &platform, size_t gamememorysize)
   if (vkCreateDevice(physicaldevice, &deviceinfo, nullptr, &device) != VK_SUCCESS)
     throw runtime_error("Vulkan vkCreateDevice failed");
 
-  initialise_vulkan_device(&platform.vulkan, physicaldevices[0], device, 0);
+  VkQueue renderqueue;
+  vkGetDeviceQueue(device, queueindex, 0, &renderqueue);
+
+  VkQueue transferqueue;
+  vkGetDeviceQueue(device, queueindex, 1, &transferqueue);
+
+  platform.renderdevice.device = device;
+  platform.renderdevice.physicaldevice = physicaldevices[0];
+  platform.renderdevice.queues[0] = { renderqueue, queueindex };
+  platform.renderdevice.queues[1] = { transferqueue, queueindex };
+  platform.renderdevice.renderqueue = 0;
+  platform.renderdevice.transferqueue = 1;
 }
 
 
@@ -184,15 +195,13 @@ class Renderer
 
   protected:
 
-    VulkanDevice vulkan;
-
     Vulkan::CommandPool commandpool;
     Vulkan::CommandBuffer commandbuffer;
     Vulkan::Semaphore acquirecomplete;
     Vulkan::Semaphore rendercomplete;
     Vulkan::Fence transfercomplete;
 
-    Vulkan::TransferBuffer transferbuffer;
+    Vulkan::StorageBuffer transferbuffer;
     Vulkan::MemoryView<uint64_t> transfermemory;
 
     friend void initialise_renderer(Platform &platform, Renderer &renderer, int width, int height, size_t slotcount, size_t slabsize, size_t storagesize);
@@ -217,11 +226,11 @@ void Renderer::render(Camera const &camera, PushBuffer const &renderables, void 
   viewport.acquirecomplete = acquirecomplete;
   viewport.rendercomplete = rendercomplete;
 
-  signal(vulkan, acquirecomplete);
+  signal_semaphore(rendercontext.vulkan, acquirecomplete);
 
   render(rendercontext, viewport, camera, renderables, renderparams);
 
-  begin(vulkan, commandbuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+  begin(rendercontext.vulkan, commandbuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
   setimagelayout(commandbuffer, rendercontext.colorbuffer.image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 });
 
@@ -231,11 +240,11 @@ void Renderer::render(Camera const &camera, PushBuffer const &renderables, void 
 
   barrier(commandbuffer);
 
-  end(vulkan, commandbuffer);
+  end(rendercontext.vulkan, commandbuffer);
 
-  submit(vulkan, commandbuffer, rendercomplete, transfercomplete);
+  submit(rendercontext.vulkan, commandbuffer, rendercomplete, transfercomplete);
 
-  wait(vulkan, transfercomplete);
+  wait_fence(rendercontext.vulkan, transfercomplete);
 
   uint64_t *src = transfermemory;
   uint32_t *dst = (uint32_t*)bits;
@@ -266,26 +275,6 @@ void Renderer::render(Camera const &camera, PushBuffer const &renderables, void 
 
 void initialise_renderer(Platform &platform, Renderer &renderer, int width, int height, size_t slotcount, size_t slabsize, size_t storagesize)
 {
-  auto renderdevice = platform.render_device();
-
-  initialise_vulkan_device(&renderer.vulkan, renderdevice.physicaldevice, renderdevice.device, 0);
-
-  // Render
-
-  renderer.renderparams.width = width;
-  renderer.renderparams.height = height;
-  renderer.renderparams.aspect = (float)width / (float)height;
-
-  renderer.commandpool = create_commandpool(renderer.vulkan, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-  renderer.commandbuffer = allocate_commandbuffer(renderer.vulkan, renderer.commandpool, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
-  renderer.acquirecomplete = create_semaphore(renderer.vulkan);
-  renderer.rendercomplete = create_semaphore(renderer.vulkan);
-  renderer.transfercomplete = create_fence(renderer.vulkan);
-
-  renderer.transferbuffer = create_transferbuffer(renderer.vulkan, width * height * sizeof(uint64_t));
-  renderer.transfermemory = map_memory<uint64_t>(renderer.vulkan, renderer.transferbuffer, 0, renderer.transferbuffer.size);
-
   // Resources
 
   initialise_asset_system(platform, renderer.assets, slotcount, slabsize);
@@ -294,10 +283,29 @@ void initialise_renderer(Platform &platform, Renderer &renderer, int width, int 
 
   initialise_resource_pool(platform, renderer.rendercontext.resourcepool, storagesize);
 
-  renderer.assets.load(platform, "core.pack");
+  auto core = renderer.assets.load(platform, "core.pack");
+
+  if (core->magic != CoreAsset::magic || core->version != CoreAsset::version)
+    throw runtime_error("Core Assets Version Mismatch");
+
+  // Renderer
+
+  renderer.renderparams.width = width;
+  renderer.renderparams.height = height;
+  renderer.renderparams.aspect = (float)width / (float)height;
 
   while (!prepare_render_context(platform, renderer.rendercontext, &renderer.assets))
     ;
+
+  renderer.commandpool = create_commandpool(renderer.rendercontext.vulkan, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+  renderer.commandbuffer = allocate_commandbuffer(renderer.rendercontext.vulkan, renderer.commandpool, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+  renderer.acquirecomplete = create_semaphore(renderer.rendercontext.vulkan);
+  renderer.rendercomplete = create_semaphore(renderer.rendercontext.vulkan);
+  renderer.transfercomplete = create_fence(renderer.rendercontext.vulkan);
+
+  renderer.transferbuffer = create_transferbuffer(renderer.rendercontext.vulkan, width * height * sizeof(uint64_t));
+  renderer.transfermemory = map_memory<uint64_t>(renderer.rendercontext.vulkan, renderer.transferbuffer, 0, renderer.transferbuffer.size);
 }
 
 
@@ -379,18 +387,24 @@ int main(int argc, char **argv)
 
     for(auto &mesh : scene.get<Model>(model)->meshes)
     {
+      asset_guard lock(renderer.assets);
+
       while (mesh && !mesh->ready())
         renderer.resources.request(platform, mesh);
     }
 
     for(auto &texture : scene.get<Model>(model)->textures)
     {
+      asset_guard lock(renderer.assets);
+
       while (texture && !texture->ready())
         renderer.resources.request(platform, texture);
     }
 
     for(auto &material : scene.get<Model>(model)->materials)
     {
+      asset_guard lock(renderer.assets);
+
       while (material && !material->ready())
         renderer.resources.request(platform, material);
     }

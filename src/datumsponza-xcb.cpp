@@ -40,7 +40,7 @@ class Platform : public PlatformInterface
 
     handle_t open_handle(const char *identifier) override;
 
-    void read_handle(handle_t handle, uint64_t position, void *buffer, size_t n) override;
+    void read_handle(handle_t handle, uint64_t position, void *buffer, size_t bytes) override;
 
     void close_handle(handle_t handle) override;
 
@@ -111,9 +111,9 @@ PlatformInterface::handle_t Platform::open_handle(const char *identifier)
 
 
 ///////////////////////// PlatformCore::read_handle /////////////////////////
-void Platform::read_handle(PlatformInterface::handle_t handle, uint64_t position, void *buffer, size_t n)
+void Platform::read_handle(PlatformInterface::handle_t handle, uint64_t position, void *buffer, size_t bytes)
 {
-  static_cast<FileHandle*>(handle)->read(position, buffer, n);
+  static_cast<FileHandle*>(handle)->read(position, buffer, bytes);
 }
 
 
@@ -147,7 +147,7 @@ class Game
 
     Game();
 
-    void init(VkPhysicalDevice physicaldevice, VkDevice device);
+    void init(VkPhysicalDevice physicaldevice, VkDevice device, VkQueue renderqueue, uint32_t renderqueuefamily, VkQueue transferqueue, uint32_t transferqueuefamily);
 
     void update(float dt);
 
@@ -176,7 +176,7 @@ class Game
     Platform m_platform;
 
     int m_fpscount;
-    chrono::system_clock::time_point m_fpstimer;
+    chrono::high_resolution_clock::time_point m_fpstimer;
 };
 
 
@@ -191,7 +191,7 @@ Game::Game()
 
 
 ///////////////////////// Game::init ////////////////////////////////////////
-void Game::init(VkPhysicalDevice physicaldevice, VkDevice device)
+void Game::init(VkPhysicalDevice physicaldevice, VkDevice device, VkQueue renderqueue, uint32_t renderqueuefamily, VkQueue transferqueue, uint32_t transferqueuefamily)
 {
   game_init = datumsponza_init;
   game_update = datumsponza_update;
@@ -200,7 +200,15 @@ void Game::init(VkPhysicalDevice physicaldevice, VkDevice device)
   if (!game_init || !game_update || !game_render)
     throw std::runtime_error("Unable to init game code");
 
-  m_platform.initialise({ physicaldevice, device }, 1*1024*1024*1024);
+  RenderDevice renderdevice = {};
+  renderdevice.device = device;
+  renderdevice.physicaldevice = physicaldevice;
+  renderdevice.queues[0] = { renderqueue, renderqueuefamily };
+  renderdevice.queues[1] = { transferqueue, transferqueuefamily };
+  renderdevice.renderqueue = 0;
+  renderdevice.transferqueue = 1;
+
+  m_platform.initialise(renderdevice, 1*1024*1024*1024);
 
   game_init(m_platform);
 
@@ -274,7 +282,12 @@ struct Vulkan
   VkPhysicalDeviceProperties physicaldeviceproperties;
   VkPhysicalDeviceMemoryProperties physicaldevicememoryproperties;
   VkDevice device;
-  VkQueue queue;
+
+  VkQueue renderqueue;
+  uint32_t renderqueuefamily;
+
+  VkQueue transferqueue;
+  uint32_t transferqueuefamily;
 
   VkSurfaceKHR surface;
 
@@ -310,7 +323,7 @@ void Vulkan::init(xcb_connection_t *connection, xcb_window_t window)
 
 #if VALIDATION
   const char *validationlayers[] = { "VK_LAYER_LUNARG_standard_validation" };
-//  const char *validationlayers[] = { "VK_LAYER_GOOGLE_threading", "VK_LAYER_LUNARG_mem_tracker", "VK_LAYER_LUNARG_object_tracker", "VK_LAYER_LUNARG_draw_state", "VK_LAYER_LUNARG_param_checker", "VK_LAYER_LUNARG_swapchain", "VK_LAYER_LUNARG_device_limits", "VK_LAYER_LUNARG_image", "VK_LAYER_GOOGLE_unique_objects" };
+//  const char *validationlayers[] = { "VK_LAYER_GOOGLE_threading", "VK_LAYER_LUNARG_core_validation", "VK_LAYER_LUNARG_device_limits", "VK_LAYER_LUNARG_object_tracker", "VK_LAYER_LUNARG_parameter_validation", "VK_LAYER_LUNARG_image", "VK_LAYER_LUNARG_swapchain", "VK_LAYER_GOOGLE_unique_objects" };
   const char *instanceextensions[] = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_XCB_SURFACE_EXTENSION_NAME, VK_EXT_DEBUG_REPORT_EXTENSION_NAME };
 #else
   const char *validationlayers[] = { };
@@ -347,26 +360,9 @@ void Vulkan::init(xcb_connection_t *connection, xcb_window_t window)
 
   physicaldevice = physicaldevices[0];
 
-  uint32_t queuecount = 0;
-  vkGetPhysicalDeviceQueueFamilyProperties(physicaldevice, &queuecount, nullptr);
+  vkGetPhysicalDeviceProperties(physicaldevice, &physicaldeviceproperties);
 
-  if (queuecount == 0)
-    throw runtime_error("Vulkan vkGetPhysicalDeviceQueueFamilyProperties failed");
-
-  vector<VkQueueFamilyProperties> queueproperties(queuecount);
-  vkGetPhysicalDeviceQueueFamilyProperties(physicaldevice, &queuecount, queueproperties.data());
-
-  uint32_t queueindex = 0;
-  while (queueindex < queuecount && !(queueproperties[queueindex].queueFlags & VK_QUEUE_GRAPHICS_BIT))
-    ++queueindex;
-
-  float queuepriorities[] = { 0.0f, 0.0f };
-
-  VkDeviceQueueCreateInfo queueinfo = {};
-  queueinfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-  queueinfo.queueFamilyIndex = queueindex;
-  queueinfo.queueCount = extentof(queuepriorities);
-  queueinfo.pQueuePriorities = queuepriorities;
+  vkGetPhysicalDeviceMemoryProperties(physicaldevice, &physicaldevicememoryproperties);
 
   const char* deviceextensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
@@ -377,24 +373,91 @@ void Vulkan::init(xcb_connection_t *connection, xcb_window_t window)
   devicefeatures.shaderTessellationAndGeometryPointSize = true;
   devicefeatures.shaderStorageImageWriteWithoutFormat = true;
 
-  VkDeviceCreateInfo deviceinfo = {};
-  deviceinfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-  deviceinfo.queueCreateInfoCount = 1;
-  deviceinfo.pQueueCreateInfos = &queueinfo;
-  deviceinfo.pEnabledFeatures = &devicefeatures;
-  deviceinfo.enabledExtensionCount = extentof(deviceextensions);
-  deviceinfo.ppEnabledExtensionNames = deviceextensions;
-  deviceinfo.enabledLayerCount = extentof(validationlayers);
-  deviceinfo.ppEnabledLayerNames = validationlayers;
+  uint32_t queuecount = 0;
+  vkGetPhysicalDeviceQueueFamilyProperties(physicaldevice, &queuecount, nullptr);
 
-  if (vkCreateDevice(physicaldevice, &deviceinfo, nullptr, &device) != VK_SUCCESS)
-    throw runtime_error("Vulkan vkCreateDevice failed");
+  if (queuecount == 0)
+    throw runtime_error("Vulkan vkGetPhysicalDeviceQueueFamilyProperties failed");
 
-  vkGetPhysicalDeviceProperties(physicaldevice, &physicaldeviceproperties);
+  vector<VkQueueFamilyProperties> queueproperties(queuecount);
+  vkGetPhysicalDeviceQueueFamilyProperties(physicaldevice, &queuecount, queueproperties.data());
 
-  vkGetPhysicalDeviceMemoryProperties(physicaldevice, &physicaldevicememoryproperties);
+  uint32_t graphicsqueueindex = 0;
+  uint32_t transferqueueindex = queuecount;
 
-  vkGetDeviceQueue(device, queueindex, 0, &queue);
+  for(auto &queue : queueproperties)
+  {
+    if ((queue.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0)
+      graphicsqueueindex = indexof(queueproperties, queue);
+
+    if ((queue.queueFlags & (VK_QUEUE_GRAPHICS_BIT|VK_QUEUE_TRANSFER_BIT)) == VK_QUEUE_TRANSFER_BIT)
+      transferqueueindex = indexof(queueproperties, queue);
+  }
+
+  float queuepriorities[] = { 0.0f, 0.0f };
+
+  if (graphicsqueueindex != transferqueueindex && transferqueueindex < queuecount)
+  {
+    // Separate Transfer and Graphics Queues
+
+    VkDeviceQueueCreateInfo queueinfo[2] = {};
+    queueinfo[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueinfo[0].queueFamilyIndex = graphicsqueueindex;
+    queueinfo[0].queueCount = extentof(queuepriorities) - 1;
+    queueinfo[0].pQueuePriorities = queuepriorities;
+    queueinfo[1].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueinfo[1].queueFamilyIndex = transferqueueindex;
+    queueinfo[1].queueCount = 1;
+    queueinfo[1].pQueuePriorities = queuepriorities + queueinfo[0].queueCount;
+
+    VkDeviceCreateInfo deviceinfo = {};
+    deviceinfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    deviceinfo.queueCreateInfoCount = extentof(queueinfo);
+    deviceinfo.pQueueCreateInfos = queueinfo;
+    deviceinfo.pEnabledFeatures = &devicefeatures;
+    deviceinfo.enabledExtensionCount = extentof(deviceextensions);
+    deviceinfo.ppEnabledExtensionNames = deviceextensions;
+    deviceinfo.enabledLayerCount = extentof(validationlayers);
+    deviceinfo.ppEnabledLayerNames = validationlayers;
+
+    if (vkCreateDevice(physicaldevice, &deviceinfo, nullptr, &device) != VK_SUCCESS)
+      throw runtime_error("Vulkan vkCreateDevice failed");
+
+    vkGetDeviceQueue(device, graphicsqueueindex, 0, &renderqueue);
+    renderqueuefamily = graphicsqueueindex;
+
+    vkGetDeviceQueue(device, transferqueueindex, 0, &transferqueue);
+    transferqueuefamily = transferqueueindex;
+  }
+  else
+  {
+    // Combined Transfer and Graphics Queue
+
+    VkDeviceQueueCreateInfo queueinfo = {};
+    queueinfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueinfo.queueFamilyIndex = graphicsqueueindex;
+    queueinfo.queueCount = extentof(queuepriorities);
+    queueinfo.pQueuePriorities = queuepriorities;
+
+    VkDeviceCreateInfo deviceinfo = {};
+    deviceinfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    deviceinfo.queueCreateInfoCount = 1;
+    deviceinfo.pQueueCreateInfos = &queueinfo;
+    deviceinfo.pEnabledFeatures = &devicefeatures;
+    deviceinfo.enabledExtensionCount = extentof(deviceextensions);
+    deviceinfo.ppEnabledExtensionNames = deviceextensions;
+    deviceinfo.enabledLayerCount = extentof(validationlayers);
+    deviceinfo.ppEnabledLayerNames = validationlayers;
+
+    if (vkCreateDevice(physicaldevice, &deviceinfo, nullptr, &device) != VK_SUCCESS)
+      throw runtime_error("Vulkan vkCreateDevice failed");
+
+    vkGetDeviceQueue(device, graphicsqueueindex, 0, &renderqueue);
+    renderqueuefamily = graphicsqueueindex;
+
+    vkGetDeviceQueue(device, graphicsqueueindex, 1, &transferqueue);
+    transferqueuefamily = graphicsqueueindex;
+  }
 
 #if VALIDATION
 
@@ -426,7 +489,7 @@ void Vulkan::init(xcb_connection_t *connection, xcb_window_t window)
   VkCommandPoolCreateInfo commandpoolinfo = {};
   commandpoolinfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
   commandpoolinfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-  commandpoolinfo.queueFamilyIndex = queueindex;
+  commandpoolinfo.queueFamilyIndex = graphicsqueueindex;
 
   if (vkCreateCommandPool(device, &commandpoolinfo, nullptr, &commandpool) != VK_SUCCESS)
     throw runtime_error("Vulkan vkCreateCommandPool failed");
@@ -444,7 +507,7 @@ void Vulkan::init(xcb_connection_t *connection, xcb_window_t window)
     throw runtime_error("Vulkan vkCreateWin32SurfaceKHR failed");
 
   VkBool32 surfacesupport = VK_FALSE;
-  vkGetPhysicalDeviceSurfaceSupportKHR(physicaldevice, queueindex, surface, &surfacesupport);
+  vkGetPhysicalDeviceSurfaceSupportKHR(physicaldevice, graphicsqueueindex, surface, &surfacesupport);
 
   if (surfacesupport != VK_TRUE)
     throw runtime_error("Vulkan vkGetPhysicalDeviceSurfaceSupportKHR error");
@@ -560,9 +623,9 @@ void Vulkan::init(xcb_connection_t *connection, xcb_window_t window)
   submitinfo.commandBufferCount = 1;
   submitinfo.pCommandBuffers = &setupbuffer;
 
-  vkQueueSubmit(queue, 1, &submitinfo, VK_NULL_HANDLE);
+  vkQueueSubmit(renderqueue, 1, &submitinfo, VK_NULL_HANDLE);
 
-  vkQueueWaitIdle(queue);
+  vkQueueWaitIdle(renderqueue);
 
   vkFreeCommandBuffers(device, commandpool, 1, &setupbuffer);
 
@@ -670,9 +733,9 @@ void Vulkan::resize()
     submitinfo.commandBufferCount = 1;
     submitinfo.pCommandBuffers = &setupbuffer;
 
-    vkQueueSubmit(queue, 1, &submitinfo, VK_NULL_HANDLE);
+    vkQueueSubmit(renderqueue, 1, &submitinfo, VK_NULL_HANDLE);
 
-    vkQueueWaitIdle(queue);
+    vkQueueWaitIdle(renderqueue);
 
     vkFreeCommandBuffers(device, commandpool, 1, &setupbuffer);
   }
@@ -697,7 +760,7 @@ void Vulkan::present()
   presentinfo.waitSemaphoreCount = 1;
   presentinfo.pWaitSemaphores = &rendercomplete;
 
-  vkQueuePresentKHR(queue, &presentinfo);
+  vkQueuePresentKHR(renderqueue, &presentinfo);
 }
 
 
@@ -994,7 +1057,7 @@ int main(int argc, char *args[])
 
     window.show();
 
-    game.init(vulkan.physicaldevice, vulkan.device);
+    game.init(vulkan.physicaldevice, vulkan.device, vulkan.renderqueue, vulkan.renderqueuefamily, vulkan.transferqueue, vulkan.transferqueuefamily);
 
     thread updatethread([&]() {
 
@@ -1044,7 +1107,7 @@ int main(int argc, char *args[])
 
     vulkan.destroy();
   }
-  catch(const exception &e)
+  catch(exception &e)
   {
     cout << "Critical Error: " << e.what() << endl;
   }

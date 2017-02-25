@@ -59,7 +59,7 @@ void datumsponza_init(PlatformInterface &platform)
   state.unitsphere = state.resources.create<Mesh>(state.assets.find(CoreAsset::unit_sphere));
   state.defaultmaterial = state.resources.create<Material>(state.assets.find(CoreAsset::default_material));
 
-  state.sundirection = Vec3(0.3698,-0.9245,-0.09245);
+  state.sundirection = Vec3(0.3698f,-0.9245f,-0.09245f);
   state.sunintensity = Color3(8.0f, 7.56f, 7.88f);
 
   state.skybox = state.resources.create<SkyBox>(state.assets.find(CoreAsset::default_skybox));
@@ -81,24 +81,24 @@ void datumsponza_init(PlatformInterface &platform)
   state.model = state.scene.load<Model>(platform, &state.resources, state.assets.load(platform, "sponza.pack"));
 
   state.lights[0] = state.scene.create<Entity>();
-  state.scene.add_component<TransformComponent>(state.lights[0], Transform::translation(Vec3(4.85f, 1.35f, 1.45f)));
+  state.scene.add_component<TransformComponent>(state.lights[0], Transform::translation(Vec3(4.85f, 1.35f, 1.45f))*Transform::rotation(Vec3(0, 0, 1), pi<float>()/2));
   state.scene.add_component<PointLightComponent>(state.lights[0], Color3(1.0f, 0.5f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
-  state.scene.add_component<ParticleSystemComponent>(state.lights[0], state.fire, (long)ParticleSystemComponent::Visible);
+  state.scene.add_component<ParticleSystemComponent>(state.lights[0], state.fire, ParticleSystemComponent::Visible);
 
   state.lights[1] = state.scene.create<Entity>();
-  state.scene.add_component<TransformComponent>(state.lights[1], Transform::translation(Vec3(4.85f, 1.35f, -2.20f)));
+  state.scene.add_component<TransformComponent>(state.lights[1], Transform::translation(Vec3(4.85f, 1.35f, -2.20f))*Transform::rotation(Vec3(0, 0, 1), pi<float>()/2));
   state.scene.add_component<PointLightComponent>(state.lights[1], Color3(1.0f, 0.3f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
-  state.scene.add_component<ParticleSystemComponent>(state.lights[1], state.fire, (long)ParticleSystemComponent::Visible);
+  state.scene.add_component<ParticleSystemComponent>(state.lights[1], state.fire, ParticleSystemComponent::Visible);
 
   state.lights[2] = state.scene.create<Entity>();
-  state.scene.add_component<TransformComponent>(state.lights[2], Transform::translation(Vec3(-6.20f, 1.35f, -2.20f)));
+  state.scene.add_component<TransformComponent>(state.lights[2], Transform::translation(Vec3(-6.20f, 1.35f, -2.20f))*Transform::rotation(Vec3(0, 0, 1), pi<float>()/2));
   state.scene.add_component<PointLightComponent>(state.lights[2], Color3(1.0f, 0.5f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
-  state.scene.add_component<ParticleSystemComponent>(state.lights[2], state.fire, (long)ParticleSystemComponent::Visible);
+  state.scene.add_component<ParticleSystemComponent>(state.lights[2], state.fire, ParticleSystemComponent::Visible);
 
   state.lights[3] = state.scene.create<Entity>();
-  state.scene.add_component<TransformComponent>(state.lights[3], Transform::translation(Vec3(-6.20f, 1.35f, 1.45f)));
+  state.scene.add_component<TransformComponent>(state.lights[3], Transform::translation(Vec3(-6.20f, 1.35f, 1.45f))*Transform::rotation(Vec3(0, 0, 1), pi<float>()/2));
   state.scene.add_component<PointLightComponent>(state.lights[3], Color3(1.0f, 0.4f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
-  state.scene.add_component<ParticleSystemComponent>(state.lights[3], state.fire, (long)ParticleSystemComponent::Visible);
+  state.scene.add_component<ParticleSystemComponent>(state.lights[3], state.fire, ParticleSystemComponent::Visible);
 
   auto envmaps = state.assets.load(platform, "sponza-env.pack");
   state.envmaps[0] = make_tuple(Vec3(-0.625f, 2.45f, -0.35f), Vec3(28.0f, 5.0f, 4.8f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 0)));
@@ -344,7 +344,7 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
       state.camera.pitch(1.5f * (state.lastmousey - input.mousey));
     }
 
-    float speed = 0.02;
+    float speed = 0.02f;
 
     if (input.modifiers & GameInput::Shift)
       speed *= 10;
@@ -391,7 +391,7 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
 
   if (auto model = state.scene.get<Model>(state.model))
   {
-    state.resources.update(model->materials[8], Color3(1.0f, 1.0f, 1.0f), 0.0f, floorroughness, 1.0f, 0.0f);
+    state.resources.update(model->materials[8], Color4(1.0f, 1.0f, 1.0f, 1.0f), 0.0f, floorroughness, 1.0f, 0.0f);
   }
 
   DEBUG_MENU_ENTRY("Lighting/Sun Direction", state.sundirection = normalise(debug_menu_value("Lighting/Sun Direction", state.sundirection, Vec3(-1), Vec3(1))))
@@ -476,7 +476,7 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
   renderparams.skybox = state.skybox;
   renderparams.sundirection = state.sundirection;
   renderparams.sunintensity = state.sunintensity;
-  renderparams.skyboxorientation = Transform::rotation(Vec3(0, 1, 0), -0.1*state.readframe->time);
+  renderparams.skyboxorientation = Transform::rotation(Vec3(0, 1, 0), -0.1f*state.readframe->time);
   renderparams.ssaoscale = 0.0f;
   renderparams.ssrstrength = 4.0f;
 
