@@ -285,6 +285,9 @@ void initialise_renderer(Platform &platform, Renderer &renderer, int width, int 
 
   auto core = renderer.assets.load(platform, "core.pack");
 
+  if (!core)
+    throw runtime_error("Core Assets Load Failure");
+
   if (core->magic != CoreAsset::magic || core->version != CoreAsset::version)
     throw runtime_error("Core Assets Version Mismatch");
 
