@@ -38,6 +38,8 @@ void datumsponza_init(PlatformInterface &platform)
 
   initialise_resource_pool(platform, state.rendercontext.resourcepool, 16*1024*1024);
 
+  initialise_render_context(platform, state.rendercontext);
+
   state.camera.set_projection(state.fov*pi<float>()/180.0f, state.aspect);
 
   state.scene.initialise_component_storage<NameComponent>();

@@ -283,6 +283,8 @@ void initialise_renderer(Platform &platform, Renderer &renderer, int width, int 
 
   initialise_resource_pool(platform, renderer.rendercontext.resourcepool, storagesize);
 
+  initialise_render_context(platform, renderer.rendercontext);
+
   auto core = renderer.assets.load(platform, "core.pack");
 
   if (!core)
