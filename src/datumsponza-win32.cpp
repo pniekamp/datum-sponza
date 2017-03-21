@@ -207,8 +207,6 @@ void Game::init(VkPhysicalDevice physicaldevice, VkDevice device, VkQueue render
   renderdevice.physicaldevice = physicaldevice;
   renderdevice.queues[0] = { renderqueue, renderqueuefamily };
   renderdevice.queues[1] = { transferqueue, transferqueuefamily };
-  renderdevice.renderqueue = 0;
-  renderdevice.transferqueue = 1;
 
   m_platform.initialise(renderdevice, 256*1024*1024);
 

@@ -34,11 +34,9 @@ void datumsponza_init(PlatformInterface &platform)
 
   initialise_asset_system(platform, state.assets, 64*1024, 128*1024*1024);
 
-  initialise_resource_system(platform, state.resources, 2*1024*1024, 8*1024*1024, 64*1024*1024);
+  initialise_resource_system(platform, state.resources, 2*1024*1024, 8*1024*1024, 64*1024*1024, 1);
 
-  initialise_resource_pool(platform, state.rendercontext.resourcepool, 16*1024*1024);
-
-  initialise_render_context(platform, state.rendercontext);
+  initialise_render_context(platform, state.rendercontext, 16*1024*1024, 0);
 
   state.camera.set_projection(state.fov*pi<float>()/180.0f, state.aspect);
 
@@ -391,7 +389,7 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
     lightcomponent.set_intensity(lampintensity);
   }
 
-  float floorroughness = 0.0f;
+  float floorroughness = 0.05f;
   DEBUG_MENU_VALUE("Scene/Floor Roughness", &floorroughness, 0.0f, 1.0f);
 
   if (auto model = state.scene.get<Model>(state.model))
@@ -482,8 +480,8 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
   renderparams.sundirection = state.sundirection;
   renderparams.sunintensity = state.sunintensity;
   renderparams.skyboxorientation = Transform::rotation(Vec3(0, 1, 0), -0.1f*state.readframe->time);
+  renderparams.ssrstrength = 1.0f;
   renderparams.ssaoscale = 0.0f;
-  renderparams.ssrstrength = 4.0f;
 
   DEBUG_MENU_VALUE("Lighting/SSR Strength", &renderparams.ssrstrength, 0.0f, 80.0f);
   DEBUG_MENU_VALUE("Lighting/Bloom Strength", &renderparams.bloomstrength, 0.0f, 8.0f);

@@ -163,15 +163,9 @@ void initialise_platform(Platform &platform, size_t gamememorysize)
   VkQueue renderqueue;
   vkGetDeviceQueue(device, queueindex, 0, &renderqueue);
 
-  VkQueue transferqueue;
-  vkGetDeviceQueue(device, queueindex, 1, &transferqueue);
-
   platform.renderdevice.device = device;
   platform.renderdevice.physicaldevice = physicaldevices[0];
   platform.renderdevice.queues[0] = { renderqueue, queueindex };
-  platform.renderdevice.queues[1] = { transferqueue, queueindex };
-  platform.renderdevice.renderqueue = 0;
-  platform.renderdevice.transferqueue = 1;
 }
 
 
@@ -279,11 +273,9 @@ void initialise_renderer(Platform &platform, Renderer &renderer, int width, int 
 
   initialise_asset_system(platform, renderer.assets, slotcount, slabsize);
 
-  initialise_resource_system(platform, renderer.resources, storagesize/8, storagesize/4, storagesize/2);
+  initialise_resource_system(platform, renderer.resources, storagesize/8, storagesize/4, storagesize/2, 0);
 
-  initialise_resource_pool(platform, renderer.rendercontext.resourcepool, storagesize);
-
-  initialise_render_context(platform, renderer.rendercontext);
+  initialise_render_context(platform, renderer.rendercontext, storagesize, 0);
 
   auto core = renderer.assets.load(platform, "core.pack");
 
