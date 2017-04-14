@@ -67,21 +67,19 @@ void datumsponza_init(PlatformInterface &platform)
 
   state.skybox = state.resources.create<SkyBox>(state.assets.find(CoreAsset::default_skybox));
 
-  state.fire = new(allocate<ParticleSystem>(platform.gamememory)) ParticleSystem({ platform.gamememory, state.particlefreelist });
+  auto model = state.assets.load(platform, "sponza.pack");
 
-  {
-    auto fire = state.assets.load(platform, "fire.pack");
+  if (!model)
+    throw runtime_error("Model Assets Load Failure");
 
-    if (fire)
-    {
-      asset_guard lock(state.assets);
+  state.model = state.scene.load<Model>(platform, &state.resources, model);
 
-      while (!state.fire->load(platform, &state.resources, state.assets.find(fire->id + 1)))
-        ;
-    }
-  }
+  auto fire = state.assets.load(platform, "fire.pack");
 
-  state.model = state.scene.load<Model>(platform, &state.resources, state.assets.load(platform, "sponza.pack"));
+  if (!fire)
+    throw runtime_error("Fire Assets Load Failure");
+
+  state.fire = state.resources.create<ParticleSystem>(state.assets.find(fire->id + 1));
 
   state.lights[0] = state.scene.create<Entity>();
   state.scene.add_component<TransformComponent>(state.lights[0], Transform::translation(Vec3(4.85f, 1.35f, 1.45f))*Transform::rotation(Vec3(0, 0, 1), pi<float>()/2));
@@ -104,6 +102,10 @@ void datumsponza_init(PlatformInterface &platform)
   state.scene.add_component<ParticleSystemComponent>(state.lights[3], state.fire, ParticleSystemComponent::Visible);
 
   auto envmaps = state.assets.load(platform, "sponza-env.pack");
+
+  if (!envmaps)
+    throw runtime_error("Envmap Assets Load Failure");
+
   state.envmaps[0] = make_tuple(Vec3(-0.625f, 2.45f, -0.35f), Vec3(28.0f, 5.0f, 4.8f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 0)));
   state.envmaps[1] = make_tuple(Vec3(-0.625f, 1.95f, 3.9f), Vec3(28.0f, 4.0f, 3.7f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 1)));
   state.envmaps[2] = make_tuple(Vec3(-0.625f, 1.95f, -4.6f), Vec3(28.0f, 4.0f, 3.7f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 2)));
@@ -112,6 +114,8 @@ void datumsponza_init(PlatformInterface &platform)
 //  state.skybox = state.resources.create<SkyBox>(state.assets.find(envmaps->id + 0));
 
   state.camera.lookat(Vec3(0, 1, 0), Vec3(1, 1, 0), Vec3(0, 1, 0));
+
+  state.mode = GameState::Startup;
 }
 
 
@@ -120,7 +124,7 @@ void buildgeometrylist(PlatformInterface &platform, GameState &state, GeometryLi
 {
   GeometryList::BuildState buildstate;
 
-  if (meshes.begin(buildstate, platform, state.rendercontext, &state.resources))
+  if (meshes.begin(buildstate, state.rendercontext, &state.resources))
   {
     auto frustum = state.camera.frustum();
 
@@ -140,7 +144,13 @@ void buildgeometrylist(PlatformInterface &platform, GameState &state, GeometryLi
               auto instance = meshstorage->get(entity);
               auto transform = transformstorage->get(entity);
 
-              meshes.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
+              state.resources.request(platform, instance.mesh());
+              state.resources.request(platform, instance.material());
+
+              if (instance.mesh()->ready() && instance.material()->ready())
+              {
+                meshes.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
+              }
             }
 
             subtree.descend();
@@ -156,7 +166,13 @@ void buildgeometrylist(PlatformInterface &platform, GameState &state, GeometryLi
             {
               auto transform = transformstorage->get(entity);
 
-              meshes.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
+              state.resources.request(platform, instance.mesh());
+              state.resources.request(platform, instance.material());
+
+              if (instance.mesh()->ready() && instance.material()->ready())
+              {
+                meshes.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
+              }
             }
           }
 
@@ -173,7 +189,13 @@ void buildgeometrylist(PlatformInterface &platform, GameState &state, GeometryLi
       {
         auto transform = transformstorage->get(entity);
 
-        meshes.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
+        state.resources.request(platform, instance.mesh());
+        state.resources.request(platform, instance.material());
+
+        if (instance.mesh()->ready() && instance.material()->ready())
+        {
+          meshes.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
+        }
       }
     }
 
@@ -187,7 +209,7 @@ void buildobjectlist(PlatformInterface &platform, GameState &state, ForwardList 
 {
   ForwardList::BuildState buildstate;
 
-  if (objects.begin(buildstate, platform, state.rendercontext, &state.resources))
+  if (objects.begin(buildstate, state.rendercontext, &state.resources))
   {
     auto frustum = state.camera.frustum();
 
@@ -199,7 +221,7 @@ void buildobjectlist(PlatformInterface &platform, GameState &state, ForwardList 
 
       if (intersects(frustum, particles.bound()))
       {
-        objects.push_particlesystem(buildstate, particles.instance());
+        objects.push_particlesystem(buildstate, particles.system(), particles.instance());
       }
     }
 
@@ -213,7 +235,7 @@ void buildcasterlist(PlatformInterface &platform, GameState &state, CasterList &
 {
   CasterList::BuildState buildstate;
 
-  if (casters.begin(buildstate, platform, state.rendercontext, &state.resources))
+  if (casters.begin(buildstate, state.rendercontext, &state.resources))
   {
     const float znear = 0.1f;
     const float zfar = state.rendercontext.shadows.shadowsplitfar;
@@ -256,7 +278,13 @@ void buildcasterlist(PlatformInterface &platform, GameState &state, CasterList &
               auto instance = meshstorage->get(entity);
               auto transform = transformstorage->get(entity);
 
-              casters.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
+              state.resources.request(platform, instance.mesh());
+              state.resources.request(platform, instance.material());
+
+              if (instance.mesh()->ready() && instance.material()->ready())
+              {
+                casters.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
+              }
             }
 
             subtree.descend();
@@ -272,7 +300,13 @@ void buildcasterlist(PlatformInterface &platform, GameState &state, CasterList &
             {
               auto transform = transformstorage->get(entity);
 
-              casters.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
+              state.resources.request(platform, instance.mesh());
+              state.resources.request(platform, instance.material());
+
+              if (instance.mesh()->ready() && instance.material()->ready())
+              {
+                casters.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
+              }
             }
           }
 
@@ -289,7 +323,13 @@ void buildcasterlist(PlatformInterface &platform, GameState &state, CasterList &
       {
         auto transform = transformstorage->get(entity);
 
-        casters.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
+        state.resources.request(platform, instance.mesh());
+        state.resources.request(platform, instance.material());
+
+        if (instance.mesh()->ready() && instance.material()->ready())
+        {
+          casters.push_mesh(buildstate, transform.world(), instance.mesh(), instance.material());
+        }
       }
     }
 
@@ -303,7 +343,7 @@ void buildlightlist(PlatformInterface &platform, GameState &state, LightList &li
 {
   LightList::BuildState buildstate;
 
-  if (lights.begin(buildstate, platform, state.rendercontext, &state.resources))
+  if (lights.begin(buildstate, state.rendercontext, &state.resources))
   {
     auto frustum = state.camera.frustum();
 
@@ -335,83 +375,133 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
 
   state.time += dt;
 
-  bool inputaccepted = false;
+  state.writeframe->mode = state.mode;
+  state.writeframe->time = state.time;
 
-  update_debug_overlay(input, &inputaccepted);
-
-  if (!inputaccepted)
+  if (state.mode == GameState::Startup)
   {
-    if (input.mousebuttons[GameInput::Left].state == true)
+    asset_guard lock(state.assets);
+
+    state.resources.request(platform, state.loader);
+    state.resources.request(platform, state.debugfont);
+
+    prepare_render_context(platform, state.rendercontext, &state.assets);
+
+    if (state.rendercontext.ready && state.loader->ready() && state.debugfont->ready())
     {
-      state.camera.yaw(1.5f * (state.lastmousex - input.mousex), Vec3(0, 1, 0));
-      state.camera.pitch(1.5f * (state.lastmousey - input.mousey));
+      state.mode = GameState::Load;
+    }
+  }
+
+  if (state.mode == GameState::Load)
+  {
+    asset_guard lock(state.assets);
+
+    int ready = 0, total = 0;
+
+    request(platform, state.resources, state.fire, &ready, &total);
+    request(platform, state.resources, state.skybox, &ready, &total);
+
+    for(auto &envmap : state.envmaps)
+    {
+      request(platform, state.resources, get<2>(envmap), &ready, &total);
     }
 
-    float speed = 0.02f;
+    for(auto &entity : state.scene.entities<MeshComponent>())
+    {
+      auto instance = state.scene.get_component<MeshComponent>(entity);
 
-    if (input.modifiers & GameInput::Shift)
-      speed *= 10;
+      if (intersects(state.camera.frustum(), instance.bound()))
+      {
+        request(platform, state.resources, instance.mesh(), &ready, &total);
+        request(platform, state.resources, instance.material(), &ready, &total);
+      }
+    }
 
-    if (input.controllers[0].move_up.state == true && !(input.modifiers & GameInput::Control))
-      state.camera.offset(speed*Vec3(0, 0, -1));
-
-    if (input.controllers[0].move_down.state == true && !(input.modifiers & GameInput::Control))
-      state.camera.offset(speed*Vec3(0, 0, 1));
-
-    if (input.controllers[0].move_up.state == true && (input.modifiers & GameInput::Control))
-      state.camera.offset(speed*Vec3(0, 1, 0));
-
-    if (input.controllers[0].move_down.state == true && (input.modifiers & GameInput::Control))
-      state.camera.offset(speed*Vec3(0, -1, 0));
-
-    if (input.controllers[0].move_left.state == true)
-      state.camera.offset(speed*Vec3(-1, 0, 0));
-
-    if (input.controllers[0].move_right.state == true)
-      state.camera.offset(speed*Vec3(1, 0, 0));
+    if (ready == total)
+    {
+      state.mode = GameState::Play;
+    }
   }
 
-  state.lastmousex = input.mousex;
-  state.lastmousey = input.mousey;
-  state.lastmousez = input.mousez;
-
-  state.camera = adapt(state.camera, state.rendercontext.luminance, 0.1f, 0.5f*dt);
-
-  state.camera = normalise(state.camera);
-
-  Color3 lampintensity = Color3(8.0f, 8.0f, 8.0f);
-  DEBUG_MENU_VALUE("Scene/Lamp Intensity", &lampintensity, Color3(0.0f, 0.0f, 0.0f), Color3(16.0f, 16.0f, 16.0f));
-
-  for(auto &light : state.lights)
+  if (state.mode == GameState::Play)
   {
-    auto lightcomponent = state.scene.get_component<PointLightComponent>(light);
+    bool inputaccepted = false;
 
-    lightcomponent.set_intensity(lampintensity);
+    update_debug_overlay(input, &inputaccepted);
+
+    if (!inputaccepted)
+    {
+      if (input.mousebuttons[GameInput::Left].state == true)
+      {
+        state.camera.yaw(1.5f * (state.lastmousex - input.mousex), Vec3(0, 1, 0));
+        state.camera.pitch(1.5f * (state.lastmousey - input.mousey));
+      }
+
+      float speed = 0.02f;
+
+      if (input.modifiers & GameInput::Shift)
+        speed *= 10;
+
+      if (input.controllers[0].move_up.state == true && !(input.modifiers & GameInput::Control))
+        state.camera.offset(speed*Vec3(0, 0, -1));
+
+      if (input.controllers[0].move_down.state == true && !(input.modifiers & GameInput::Control))
+        state.camera.offset(speed*Vec3(0, 0, 1));
+
+      if (input.controllers[0].move_up.state == true && (input.modifiers & GameInput::Control))
+        state.camera.offset(speed*Vec3(0, 1, 0));
+
+      if (input.controllers[0].move_down.state == true && (input.modifiers & GameInput::Control))
+        state.camera.offset(speed*Vec3(0, -1, 0));
+
+      if (input.controllers[0].move_left.state == true)
+        state.camera.offset(speed*Vec3(-1, 0, 0));
+
+      if (input.controllers[0].move_right.state == true)
+        state.camera.offset(speed*Vec3(1, 0, 0));
+    }
+
+    state.lastmousex = input.mousex;
+    state.lastmousey = input.mousey;
+    state.lastmousez = input.mousez;
+
+    state.camera = adapt(state.camera, state.rendercontext.luminance, 0.1f, 0.5f*dt);
+
+    state.camera = normalise(state.camera);
+
+    Color3 lampintensity = Color3(8.0f, 8.0f, 8.0f);
+    DEBUG_MENU_VALUE("Scene/Lamp Intensity", &lampintensity, Color3(0.0f, 0.0f, 0.0f), Color3(16.0f, 16.0f, 16.0f));
+
+    for(auto &light : state.lights)
+    {
+      auto lightcomponent = state.scene.get_component<PointLightComponent>(light);
+
+      lightcomponent.set_intensity(lampintensity);
+    }
+
+    float floorroughness = 0.05f;
+    DEBUG_MENU_VALUE("Scene/Floor Roughness", &floorroughness, 0.0f, 1.0f);
+
+    if (auto model = state.scene.get<Model>(state.model))
+    {
+      state.resources.update(model->materials[8], Color4(1.0f, 1.0f, 1.0f, 1.0f), 0.0f, floorroughness, 1.0f, 0.0f);
+    }
+
+    DEBUG_MENU_ENTRY("Lighting/Sun Direction", state.sundirection = normalise(debug_menu_value("Lighting/Sun Direction", state.sundirection, Vec3(-1), Vec3(1))))
+
+    update_meshes(state.scene);
+    update_particlesystems(state.scene, state.camera, dt);
+
+    state.writeframe->camera = state.camera;
+
+    asset_guard lock(state.assets);
+
+    buildgeometrylist(platform, state, state.writeframe->geometry);
+    buildobjectlist(platform, state, state.writeframe->objects);
+    buildcasterlist(platform, state, state.writeframe->casters);
+    buildlightlist(platform, state, state.writeframe->lights);
   }
-
-  float floorroughness = 0.05f;
-  DEBUG_MENU_VALUE("Scene/Floor Roughness", &floorroughness, 0.0f, 1.0f);
-
-  if (auto model = state.scene.get<Model>(state.model))
-  {
-    state.resources.update(model->materials[8], Color4(1.0f, 1.0f, 1.0f, 1.0f), 0.0f, floorroughness, 1.0f, 0.0f);
-  }
-
-  DEBUG_MENU_ENTRY("Lighting/Sun Direction", state.sundirection = normalise(debug_menu_value("Lighting/Sun Direction", state.sundirection, Vec3(-1), Vec3(1))))
-
-  update_mesh_bounds(state.scene);
-  update_particlesystem_bounds(state.scene);
-  update_particlesystems(state.scene, state.camera, dt);
-
-  asset_guard lock(state.assets);
-
-  state.writeframe->time = state.time;
-  state.writeframe->camera = state.camera;
-
-  buildgeometrylist(platform, state, state.writeframe->geometry);
-  buildobjectlist(platform, state, state.writeframe->objects);
-  buildcasterlist(platform, state, state.writeframe->casters);
-  buildlightlist(platform, state, state.writeframe->lights);
 
   state.writeframe->resourcetoken = state.resources.token();
 
@@ -428,29 +518,6 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
 
   GameState &state = *static_cast<GameState*>(platform.gamememory.data);
 
-  if (!prepare_render_context(platform, state.rendercontext, &state.assets))
-  {
-    render_fallback(state.rendercontext, viewport, embeded::logo.data, embeded::logo.width, embeded::logo.height);
-    return;
-  }
-
-  if (!state.skybox->ready())
-  {
-    asset_guard lock(state.assets);
-
-    state.resources.request(platform, state.skybox);
-  }
-
-  for(auto &envmap : state.envmaps)
-  {
-    if (!get<2>(envmap)->ready())
-    {
-      asset_guard lock(state.assets);
-
-      state.resources.request(platform, get<2>(envmap));
-    }
-  }
-
   while (state.readyframe.load()->time <= state.readframe->time)
     ;
 
@@ -458,37 +525,68 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
 
   BEGIN_TIMED_BLOCK(Render, Color3(0.0f, 0.2f, 1.0f))
 
-  auto &camera = state.readframe->camera;
-
-  RenderList renderlist(platform.renderscratchmemory, 8*1024*1024);
-
-  renderlist.push_casters(state.readframe->casters);
-  renderlist.push_geometry(state.readframe->geometry);
-  renderlist.push_objects(state.readframe->objects);
-  renderlist.push_lights(state.readframe->lights);
-
-  for(auto &envmap : state.envmaps)
+  if (state.readframe->mode == GameState::Startup)
   {
-    renderlist.push_environment(Transform::translation(get<0>(envmap)), get<1>(envmap), get<2>(envmap));
+    render_fallback(state.rendercontext, viewport, embeded::logo.data, embeded::logo.width, embeded::logo.height);
   }
 
-  RenderParams renderparams;
-  renderparams.width = viewport.width;
-  renderparams.height = viewport.height;
-  renderparams.aspect = state.aspect;
-  renderparams.skybox = state.skybox;
-  renderparams.sundirection = state.sundirection;
-  renderparams.sunintensity = state.sunintensity;
-  renderparams.skyboxorientation = Transform::rotation(Vec3(0, 1, 0), -0.1f*state.readframe->time);
-  renderparams.ssrstrength = 1.0f;
-  renderparams.ssaoscale = 0.0f;
+  if (state.readframe->mode == GameState::Load)
+  {
+    RenderList renderlist(platform.renderscratchmemory, 8*1024*1024);
 
-  DEBUG_MENU_VALUE("Lighting/SSR Strength", &renderparams.ssrstrength, 0.0f, 80.0f);
-  DEBUG_MENU_VALUE("Lighting/Bloom Strength", &renderparams.bloomstrength, 0.0f, 8.0f);
+    SpriteList sprites;
+    SpriteList::BuildState buildstate;
 
-  render_debug_overlay(platform, state.rendercontext, &state.resources, renderlist, viewport, state.debugfont);
+    if (sprites.begin(buildstate, state.rendercontext, &state.resources))
+    {
+      sprites.push_text(buildstate, Vec2(viewport.width/2 - state.debugfont->width("Loading...")/2, viewport.height/2 + state.debugfont->height()/2), state.debugfont->height(), state.debugfont, "Loading...");
 
-  render(state.rendercontext, viewport, camera, renderlist, renderparams);
+      sprites.finalise(buildstate);
+    }
+
+    renderlist.push_sprites(viewport, sprites);
+
+    RenderParams renderparams;
+    renderparams.width = viewport.width;
+    renderparams.height = viewport.height;
+
+    render(state.rendercontext, viewport, Camera(), renderlist, renderparams);
+  }
+
+  if (state.readframe->mode == GameState::Play)
+  {
+    auto &camera = state.readframe->camera;
+
+    RenderList renderlist(platform.renderscratchmemory, 8*1024*1024);
+
+    renderlist.push_casters(state.readframe->casters);
+    renderlist.push_geometry(state.readframe->geometry);
+    renderlist.push_objects(state.readframe->objects);
+    renderlist.push_lights(state.readframe->lights);
+
+    for(auto &envmap : state.envmaps)
+    {
+      renderlist.push_environment(Transform::translation(get<0>(envmap)), get<1>(envmap), get<2>(envmap));
+    }
+
+    RenderParams renderparams;
+    renderparams.width = viewport.width;
+    renderparams.height = viewport.height;
+    renderparams.aspect = state.aspect;
+    renderparams.skybox = state.skybox;
+    renderparams.sundirection = state.sundirection;
+    renderparams.sunintensity = state.sunintensity;
+    renderparams.skyboxorientation = Transform::rotation(Vec3(0, 1, 0), -0.1f*state.readframe->time);
+    renderparams.ssrstrength = 1.0f;
+    renderparams.ssaoscale = 0.0f;
+
+    DEBUG_MENU_VALUE("Lighting/SSR Strength", &renderparams.ssrstrength, 0.0f, 80.0f);
+    DEBUG_MENU_VALUE("Lighting/Bloom Strength", &renderparams.bloomstrength, 0.0f, 8.0f);
+
+    render_debug_overlay(state.rendercontext, &state.resources, renderlist, viewport, state.debugfont);
+
+    render(state.rendercontext, viewport, camera, renderlist, renderparams);
+  }
 
   state.resources.release(state.readframe->resourcetoken);
 

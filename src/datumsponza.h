@@ -25,6 +25,8 @@ struct GameState
   const float fov = 60.0f;
   const float aspect = 1920.0f/1080.0f;
 
+  enum { Startup, Load, Play } mode;
+
   float time = 0;
 
   Camera camera;
@@ -37,7 +39,7 @@ struct GameState
   Material const *defaultmaterial;
   SkyBox const *skybox;
 
-  ParticleSystem *fire;
+  ParticleSystem const *fire;
 
   std::tuple<Vec3, Vec3, EnvMap const *> envmaps[4];
 
@@ -46,8 +48,6 @@ struct GameState
   ResourceManager resources;
 
   RenderContext rendercontext;
-
-  FreeList particlefreelist;
 
   lml::Vec3 sundirection;
   lml::Color3 sunintensity;
@@ -61,6 +61,8 @@ struct GameState
 
   struct RenderFrame
   {
+    int mode;
+
     float time;
 
     Camera camera;

@@ -149,6 +149,7 @@ void initialise_platform(Platform &platform, size_t gamememorysize)
   devicefeatures.geometryShader = true;
   devicefeatures.shaderTessellationAndGeometryPointSize = true;
   devicefeatures.shaderStorageImageWriteWithoutFormat = true;
+  devicefeatures.samplerAnisotropy = true;
 
   VkDeviceCreateInfo deviceinfo = {};
   deviceinfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -414,7 +415,7 @@ int main(int argc, char **argv)
       GeometryList geometry;
       GeometryList::BuildState buildstate;
 
-      if (geometry.begin(buildstate, platform, renderer.rendercontext, &renderer.resources))
+      if (geometry.begin(buildstate, renderer.rendercontext, &renderer.resources))
       {       
         for(auto &entity : scene.entities<MeshComponent>())
         {
@@ -434,7 +435,7 @@ int main(int argc, char **argv)
       LightList lights;
       LightList::BuildState buildstate;
 
-      if (lights.begin(buildstate, platform, renderer.rendercontext, &renderer.resources))
+      if (lights.begin(buildstate, renderer.rendercontext, &renderer.resources))
       {
         for(auto &entity : scene.entities<PointLightComponent>())
         {

@@ -372,6 +372,7 @@ void Vulkan::init(HINSTANCE hinstance, HWND hwnd)
   devicefeatures.geometryShader = true;
   devicefeatures.shaderTessellationAndGeometryPointSize = true;
   devicefeatures.shaderStorageImageWriteWithoutFormat = true;
+  devicefeatures.samplerAnisotropy = true;
 
   uint32_t queuecount = 0;
   vkGetPhysicalDeviceQueueFamilyProperties(physicaldevice, &queuecount, nullptr);
