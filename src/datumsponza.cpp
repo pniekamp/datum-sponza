@@ -385,8 +385,6 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
     state.resources.request(platform, state.loader);
     state.resources.request(platform, state.debugfont);
 
-    prepare_render_context(platform, state.rendercontext, &state.assets);
-
     if (state.rendercontext.ready && state.loader->ready() && state.debugfont->ready())
     {
       state.mode = GameState::Load;
@@ -527,6 +525,8 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
 
   if (state.readframe->mode == GameState::Startup)
   {
+    prepare_render_context(platform, state.rendercontext, &state.assets);
+
     render_fallback(state.rendercontext, viewport, embeded::logo.data, embeded::logo.width, embeded::logo.height);
   }
 
@@ -550,24 +550,14 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
     renderparams.width = viewport.width;
     renderparams.height = viewport.height;
 
+    prepare_render_pipeline(state.rendercontext, renderparams);
+
     render(state.rendercontext, viewport, Camera(), renderlist, renderparams);
   }
 
   if (state.readframe->mode == GameState::Play)
   {
     auto &camera = state.readframe->camera;
-
-    RenderList renderlist(platform.renderscratchmemory, 8*1024*1024);
-
-    renderlist.push_casters(state.readframe->casters);
-    renderlist.push_geometry(state.readframe->geometry);
-    renderlist.push_objects(state.readframe->objects);
-    renderlist.push_lights(state.readframe->lights);
-
-    for(auto &envmap : state.envmaps)
-    {
-      renderlist.push_environment(Transform::translation(get<0>(envmap)), get<1>(envmap), get<2>(envmap));
-    }
 
     RenderParams renderparams;
     renderparams.width = viewport.width;
@@ -582,6 +572,20 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
 
     DEBUG_MENU_VALUE("Lighting/SSR Strength", &renderparams.ssrstrength, 0.0f, 80.0f);
     DEBUG_MENU_VALUE("Lighting/Bloom Strength", &renderparams.bloomstrength, 0.0f, 8.0f);
+
+    prepare_render_pipeline(state.rendercontext, renderparams);
+
+    RenderList renderlist(platform.renderscratchmemory, 8*1024*1024);
+
+    renderlist.push_casters(state.readframe->casters);
+    renderlist.push_geometry(state.readframe->geometry);
+    renderlist.push_objects(state.readframe->objects);
+    renderlist.push_lights(state.readframe->lights);
+
+    for(auto &envmap : state.envmaps)
+    {
+      renderlist.push_environment(Transform::translation(get<0>(envmap)), get<1>(envmap), get<2>(envmap));
+    }
 
     render_debug_overlay(state.rendercontext, &state.resources, renderlist, viewport, state.debugfont);
 
