@@ -263,7 +263,7 @@ void Game::terminate()
 //|--------------------------------------------------------------------------
 
 #ifndef NDEBUG
-#define VALIDATION 0
+#define VALIDATION 1
 #endif
 
 struct Vulkan
@@ -373,6 +373,7 @@ void Vulkan::init(HINSTANCE hinstance, HWND hwnd)
   devicefeatures.shaderTessellationAndGeometryPointSize = true;
   devicefeatures.shaderStorageImageWriteWithoutFormat = true;
   devicefeatures.samplerAnisotropy = true;
+  devicefeatures.textureCompressionBC = true;
 
   uint32_t queuecount = 0;
   vkGetPhysicalDeviceQueueFamilyProperties(physicaldevice, &queuecount, nullptr);

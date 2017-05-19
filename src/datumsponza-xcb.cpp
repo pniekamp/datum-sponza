@@ -371,6 +371,7 @@ void Vulkan::init(xcb_connection_t *connection, xcb_window_t window)
   devicefeatures.shaderTessellationAndGeometryPointSize = true;
   devicefeatures.shaderStorageImageWriteWithoutFormat = true;
   devicefeatures.samplerAnisotropy = true;
+  devicefeatures.textureCompressionBC = true;
 
   uint32_t queuecount = 0;
   vkGetPhysicalDeviceQueueFamilyProperties(physicaldevice, &queuecount, nullptr);
