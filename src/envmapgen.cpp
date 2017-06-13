@@ -292,7 +292,7 @@ void initialise_renderer(Platform &platform, Renderer &renderer, int width, int 
   renderer.renderparams.height = height;
   renderer.renderparams.aspect = (float)width / (float)height;
 
-  while (!prepare_render_context(platform, renderer.rendercontext, &renderer.assets))
+  while (!prepare_render_context(platform, renderer.rendercontext, renderer.assets))
     ;
 
   renderer.commandpool = create_commandpool(renderer.rendercontext.vulkan, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
@@ -415,7 +415,7 @@ int main(int argc, char **argv)
       GeometryList geometry;
       GeometryList::BuildState buildstate;
 
-      if (geometry.begin(buildstate, renderer.rendercontext, &renderer.resources))
+      if (geometry.begin(buildstate, renderer.rendercontext, renderer.resources))
       {       
         for(auto &entity : scene.entities<MeshComponent>())
         {
@@ -435,7 +435,7 @@ int main(int argc, char **argv)
       LightList lights;
       LightList::BuildState buildstate;
 
-      if (lights.begin(buildstate, renderer.rendercontext, &renderer.resources))
+      if (lights.begin(buildstate, renderer.rendercontext, renderer.resources))
       {
         for(auto &entity : scene.entities<PointLightComponent>())
         {

@@ -115,6 +115,8 @@ void datumsponza_init(PlatformInterface &platform)
 
   state.camera.lookat(Vec3(0, 1, 0), Vec3(1, 1, 0), Vec3(0, 1, 0));
 
+  prefetch_core_assets(platform, state.assets);
+
   state.mode = GameState::Startup;
 }
 
@@ -124,7 +126,7 @@ void buildgeometrylist(PlatformInterface &platform, GameState &state, GeometryLi
 {
   GeometryList::BuildState buildstate;
 
-  if (meshes.begin(buildstate, state.rendercontext, &state.resources))
+  if (meshes.begin(buildstate, state.rendercontext, state.resources))
   {
     auto frustum = state.camera.frustum();
 
@@ -209,7 +211,7 @@ void buildobjectlist(PlatformInterface &platform, GameState &state, ForwardList 
 {
   ForwardList::BuildState buildstate;
 
-  if (objects.begin(buildstate, state.rendercontext, &state.resources))
+  if (objects.begin(buildstate, state.rendercontext, state.resources))
   {
     auto frustum = state.camera.frustum();
 
@@ -235,7 +237,7 @@ void buildcasterlist(PlatformInterface &platform, GameState &state, CasterList &
 {
   CasterList::BuildState buildstate;
 
-  if (casters.begin(buildstate, state.rendercontext, &state.resources))
+  if (casters.begin(buildstate, state.rendercontext, state.resources))
   {
     const float znear = 0.1f;
     const float zfar = state.rendercontext.shadows.shadowsplitfar;
@@ -343,7 +345,7 @@ void buildlightlist(PlatformInterface &platform, GameState &state, LightList &li
 {
   LightList::BuildState buildstate;
 
-  if (lights.begin(buildstate, state.rendercontext, &state.resources))
+  if (lights.begin(buildstate, state.rendercontext, state.resources))
   {
     auto frustum = state.camera.frustum();
 
@@ -525,7 +527,7 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
 
   if (state.readframe->mode == GameState::Startup)
   {
-    prepare_render_context(platform, state.rendercontext, &state.assets);
+    prepare_render_context(platform, state.rendercontext, state.assets);
 
     render_fallback(state.rendercontext, viewport, embeded::logo.data, embeded::logo.width, embeded::logo.height);
   }
@@ -537,18 +539,23 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
     SpriteList sprites;
     SpriteList::BuildState buildstate;
 
-    if (sprites.begin(buildstate, state.rendercontext, &state.resources))
+    if (sprites.begin(buildstate, state.rendercontext, state.resources))
     {
+      sprites.viewport(buildstate, viewport);
+
       sprites.push_text(buildstate, Vec2(viewport.width/2 - state.debugfont->width("Loading...")/2, viewport.height/2 + state.debugfont->height()/2), state.debugfont->height(), state.debugfont, "Loading...");
 
       sprites.finalise(buildstate);
     }
 
-    renderlist.push_sprites(viewport, sprites);
+    renderlist.push_sprites(sprites);
 
     RenderParams renderparams;
     renderparams.width = viewport.width;
     renderparams.height = viewport.height;
+    renderparams.aspect = state.aspect;
+    renderparams.ssrstrength = 1.0f;
+    renderparams.ssaoscale = 0.0f;
 
     prepare_render_pipeline(state.rendercontext, renderparams);
 
@@ -587,7 +594,7 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
       renderlist.push_environment(Transform::translation(get<0>(envmap)), get<1>(envmap), get<2>(envmap));
     }
 
-    render_debug_overlay(state.rendercontext, &state.resources, renderlist, viewport, state.debugfont);
+    render_debug_overlay(state.rendercontext, state.resources, renderlist, viewport, state.debugfont);
 
     render(state.rendercontext, viewport, camera, renderlist, renderparams);
   }
