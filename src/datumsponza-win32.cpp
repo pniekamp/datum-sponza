@@ -398,68 +398,34 @@ void Vulkan::init(HINSTANCE hinstance, HWND hwnd)
 
   float queuepriorities[] = { 0.0f, 0.0f };
 
-  if (graphicsqueueindex != transferqueueindex && transferqueueindex < queuecount)
-  {
-    // Separate Transfer and Graphics Queues
+  VkDeviceQueueCreateInfo queueinfo[2] = {};
+  queueinfo[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+  queueinfo[0].queueFamilyIndex = graphicsqueueindex;
+  queueinfo[0].queueCount = extentof(queuepriorities) - 1;
+  queueinfo[0].pQueuePriorities = queuepriorities;
+  queueinfo[1].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+  queueinfo[1].queueFamilyIndex = transferqueueindex;
+  queueinfo[1].queueCount = 1;
+  queueinfo[1].pQueuePriorities = queuepriorities + queueinfo[0].queueCount;
 
-    VkDeviceQueueCreateInfo queueinfo[2] = {};
-    queueinfo[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queueinfo[0].queueFamilyIndex = graphicsqueueindex;
-    queueinfo[0].queueCount = extentof(queuepriorities) - 1;
-    queueinfo[0].pQueuePriorities = queuepriorities;
-    queueinfo[1].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queueinfo[1].queueFamilyIndex = transferqueueindex;
-    queueinfo[1].queueCount = 1;
-    queueinfo[1].pQueuePriorities = queuepriorities + queueinfo[0].queueCount;
+  VkDeviceCreateInfo deviceinfo = {};
+  deviceinfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+  deviceinfo.queueCreateInfoCount = extentof(queueinfo);
+  deviceinfo.pQueueCreateInfos = queueinfo;
+  deviceinfo.pEnabledFeatures = &devicefeatures;
+  deviceinfo.enabledExtensionCount = extentof(deviceextensions);
+  deviceinfo.ppEnabledExtensionNames = deviceextensions;
+  deviceinfo.enabledLayerCount = extentof(validationlayers);
+  deviceinfo.ppEnabledLayerNames = validationlayers;
 
-    VkDeviceCreateInfo deviceinfo = {};
-    deviceinfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    deviceinfo.queueCreateInfoCount = extentof(queueinfo);
-    deviceinfo.pQueueCreateInfos = queueinfo;
-    deviceinfo.pEnabledFeatures = &devicefeatures;
-    deviceinfo.enabledExtensionCount = extentof(deviceextensions);
-    deviceinfo.ppEnabledExtensionNames = deviceextensions;
-    deviceinfo.enabledLayerCount = extentof(validationlayers);
-    deviceinfo.ppEnabledLayerNames = validationlayers;
+  if (vkCreateDevice(physicaldevice, &deviceinfo, nullptr, &device) != VK_SUCCESS)
+    throw runtime_error("Vulkan vkCreateDevice failed");
 
-    if (vkCreateDevice(physicaldevice, &deviceinfo, nullptr, &device) != VK_SUCCESS)
-      throw runtime_error("Vulkan vkCreateDevice failed");
+  vkGetDeviceQueue(device, graphicsqueueindex, 0, &renderqueue);
+  renderqueuefamily = graphicsqueueindex;
 
-    vkGetDeviceQueue(device, graphicsqueueindex, 0, &renderqueue);
-    renderqueuefamily = graphicsqueueindex;
-
-    vkGetDeviceQueue(device, transferqueueindex, 0, &transferqueue);
-    transferqueuefamily = transferqueueindex;
-  }
-  else
-  {
-    // Combined Transfer and Graphics Queue
-
-    VkDeviceQueueCreateInfo queueinfo = {};
-    queueinfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queueinfo.queueFamilyIndex = graphicsqueueindex;
-    queueinfo.queueCount = extentof(queuepriorities);
-    queueinfo.pQueuePriorities = queuepriorities;
-
-    VkDeviceCreateInfo deviceinfo = {};
-    deviceinfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    deviceinfo.queueCreateInfoCount = 1;
-    deviceinfo.pQueueCreateInfos = &queueinfo;
-    deviceinfo.pEnabledFeatures = &devicefeatures;
-    deviceinfo.enabledExtensionCount = extentof(deviceextensions);
-    deviceinfo.ppEnabledExtensionNames = deviceextensions;
-    deviceinfo.enabledLayerCount = extentof(validationlayers);
-    deviceinfo.ppEnabledLayerNames = validationlayers;
-
-    if (vkCreateDevice(physicaldevice, &deviceinfo, nullptr, &device) != VK_SUCCESS)
-      throw runtime_error("Vulkan vkCreateDevice failed");
-
-    vkGetDeviceQueue(device, graphicsqueueindex, 0, &renderqueue);
-    renderqueuefamily = graphicsqueueindex;
-
-    vkGetDeviceQueue(device, graphicsqueueindex, 1, &transferqueue);
-    transferqueuefamily = graphicsqueueindex;
-  }
+  vkGetDeviceQueue(device, transferqueueindex, 0, &transferqueue);
+  transferqueuefamily = transferqueueindex;
 
 #if VALIDATION
 
@@ -545,10 +511,15 @@ void Vulkan::init(HINSTANCE hinstance, HWND hwnd)
   VkPresentModeKHR presentmode = VK_PRESENT_MODE_FIFO_KHR;
   for(size_t i = 0; i < presentmodescount; ++i)
   {
-    if ((vsync && presentmodes[i] == VK_PRESENT_MODE_MAILBOX_KHR) || (!vsync && presentmodes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR))
+    if (!vsync && presentmodes[i] == VK_PRESENT_MODE_MAILBOX_KHR)
     {
       presentmode = presentmodes[i];
       break;
+    }
+
+    if (!vsync && presentmodes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR)
+    {
+      presentmode = presentmodes[i];
     }
   }
 
@@ -561,7 +532,7 @@ void Vulkan::init(HINSTANCE hinstance, HWND hwnd)
   swapchaininfo.imageFormat = VK_FORMAT_B8G8R8A8_SRGB;
   swapchaininfo.imageColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
   swapchaininfo.imageExtent = surfacecapabilities.currentExtent;
-  swapchaininfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+  swapchaininfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
   swapchaininfo.preTransform = pretransform;
   swapchaininfo.imageArrayLayers = 1;
   swapchaininfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -884,6 +855,25 @@ void Window::init(HINSTANCE hinstance, Game *gameptr)
   DWORD dwstyle = WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
   DWORD dwexstyle = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;
 
+  if (false) // fullscreen
+  {
+    DEVMODE devmode = {};
+    devmode.dmSize = sizeof(devmode);
+    devmode.dmPelsWidth = GetSystemMetrics(SM_CXSCREEN);
+    devmode.dmPelsHeight = GetSystemMetrics(SM_CYSCREEN);
+    devmode.dmBitsPerPel = 32;
+    devmode.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
+
+    if (ChangeDisplaySettings(&devmode, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
+      throw runtime_error("Error going fullscreen");
+
+    width = devmode.dmPelsWidth;
+    height = devmode.dmPelsHeight;
+
+    dwstyle = WS_POPUP | WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
+    dwexstyle = WS_EX_APPWINDOW;
+  }
+
   RECT rect = { 0, 0, width, height };
   AdjustWindowRectEx(&rect, dwstyle, FALSE, dwexstyle);
 
@@ -919,7 +909,10 @@ void Window::resize(int width, int height)
 
     window.game->inputbuffer().register_viewport(0, 0, width, height);
 
-    vulkan.resize();
+    if (vulkan.surface)
+    {
+      vulkan.resize();
+    }
   }
 }
 

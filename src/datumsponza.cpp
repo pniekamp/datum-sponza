@@ -38,7 +38,7 @@ void datumsponza_init(PlatformInterface &platform)
 
   initialise_render_context(platform, state.rendercontext, 16*1024*1024, 0);
 
-  state.camera.set_projection(state.fov*pi<float>()/180.0f, state.aspect);
+  state.camera.set_projection(state.fov*pi<float>()/180.0f, state.aspect, 0.1f, 2000.0f);
 
   state.scene.initialise_component_storage<NameComponent>();
   state.scene.initialise_component_storage<TransformComponent>();
@@ -363,6 +363,11 @@ void buildlightlist(PlatformInterface &platform, GameState &state, LightList &li
       }
     }
 
+    for(auto &envmap : state.envmaps)
+    {
+      lights.push_environment(buildstate, Transform::translation(get<0>(envmap)), get<1>(envmap), get<2>(envmap));
+    }
+
     lights.finalise(buildstate);
   }
 }
@@ -503,6 +508,11 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
     buildlightlist(platform, state, state.writeframe->lights);
   }
 
+  if (input.keys[KB_KEY_ESCAPE].pressed())
+  {
+    platform.terminate();
+  }
+
   state.writeframe->resourcetoken = state.resources.token();
 
   state.writeframe = state.readyframe.exchange(state.writeframe);
@@ -527,7 +537,16 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
 
   if (state.readframe->mode == GameState::Startup)
   {
-    prepare_render_context(platform, state.rendercontext, state.assets);
+    if (prepare_render_context(platform, state.rendercontext, state.assets))
+    {
+      RenderParams renderparams;
+      renderparams.width = viewport.width;
+      renderparams.height = viewport.height;
+      renderparams.aspect = state.aspect;
+      renderparams.ssaoscale = 0.0f;
+
+      prepare_render_pipeline(state.rendercontext, renderparams);
+    }
 
     render_fallback(state.rendercontext, viewport, embeded::logo.data, embeded::logo.width, embeded::logo.height);
   }
@@ -551,13 +570,6 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
     renderlist.push_sprites(sprites);
 
     RenderParams renderparams;
-    renderparams.width = viewport.width;
-    renderparams.height = viewport.height;
-    renderparams.aspect = state.aspect;
-    renderparams.ssrstrength = 1.0f;
-    renderparams.ssaoscale = 0.0f;
-
-    prepare_render_pipeline(state.rendercontext, renderparams);
 
     render(state.rendercontext, viewport, Camera(), renderlist, renderparams);
   }
@@ -566,35 +578,24 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
   {
     auto &camera = state.readframe->camera;
 
+    RenderList renderlist(platform.renderscratchmemory, 8*1024*1024);
+
+    renderlist.push_casters(state.readframe->casters);
+    renderlist.push_geometry(state.readframe->geometry);
+    renderlist.push_forward(state.readframe->objects);
+    renderlist.push_lights(state.readframe->lights);
+
+    render_debug_overlay(state.rendercontext, state.resources, renderlist, viewport, state.debugfont);
+
     RenderParams renderparams;
-    renderparams.width = viewport.width;
-    renderparams.height = viewport.height;
-    renderparams.aspect = state.aspect;
     renderparams.skybox = state.skybox;
     renderparams.sundirection = state.sundirection;
     renderparams.sunintensity = state.sunintensity;
     renderparams.skyboxorientation = Transform::rotation(Vec3(0, 1, 0), -0.1f*state.readframe->time);
     renderparams.ssrstrength = 1.0f;
-    renderparams.ssaoscale = 0.0f;
 
     DEBUG_MENU_VALUE("Lighting/SSR Strength", &renderparams.ssrstrength, 0.0f, 80.0f);
     DEBUG_MENU_VALUE("Lighting/Bloom Strength", &renderparams.bloomstrength, 0.0f, 8.0f);
-
-    prepare_render_pipeline(state.rendercontext, renderparams);
-
-    RenderList renderlist(platform.renderscratchmemory, 8*1024*1024);
-
-    renderlist.push_casters(state.readframe->casters);
-    renderlist.push_geometry(state.readframe->geometry);
-    renderlist.push_objects(state.readframe->objects);
-    renderlist.push_lights(state.readframe->lights);
-
-    for(auto &envmap : state.envmaps)
-    {
-      renderlist.push_environment(Transform::translation(get<0>(envmap)), get<1>(envmap), get<2>(envmap));
-    }
-
-    render_debug_overlay(state.rendercontext, state.resources, renderlist, viewport, state.debugfont);
 
     render(state.rendercontext, viewport, camera, renderlist, renderparams);
   }

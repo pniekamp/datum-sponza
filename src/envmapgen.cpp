@@ -313,7 +313,7 @@ void initialise_renderer(Platform &platform, Renderer &renderer, int width, int 
 void image_render_envmap(Renderer &platform, Vec3 position, PushBuffer const &renderables, int width, int height, void *bits)
 {
   Camera camera;
-  camera.set_exposure(15);
+  camera.set_exposure(1);
   camera.set_projection(pi<float>()/2, 1);
   camera.set_position(position);
 
