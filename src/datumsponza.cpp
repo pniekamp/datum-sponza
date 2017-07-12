@@ -17,9 +17,6 @@ GameState::GameState(StackAllocator<> const &allocator)
     resources(&assets, allocator),
     scene(allocator)
 {
-  readframe = &renderframes[0];
-  writeframe = &renderframes[1];
-  readyframe = &renderframes[2];
 }
 
 
@@ -118,6 +115,24 @@ void datumsponza_init(PlatformInterface &platform)
   prefetch_core_assets(platform, state.assets);
 
   state.mode = GameState::Startup;
+}
+
+
+///////////////////////// game_resize ///////////////////////////////////////
+void datumsponza_resize(PlatformInterface &platform, Viewport const &viewport)
+{
+  GameState &state = *static_cast<GameState*>(platform.gamememory.data);
+
+  if (state.rendercontext.ready)
+  {
+    RenderParams renderparams;
+    renderparams.width = viewport.width;
+    renderparams.height = viewport.height;
+    renderparams.aspect = state.aspect;
+    renderparams.ssaoscale = 0.0f;
+
+    prepare_render_pipeline(state.rendercontext, renderparams);
+  }
 }
 
 
@@ -380,11 +395,6 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
 
   GameState &state = *static_cast<GameState*>(platform.gamememory.data);
 
-  state.time += dt;
-
-  state.writeframe->mode = state.mode;
-  state.writeframe->time = state.time;
-
   if (state.mode == GameState::Startup)
   {
     asset_guard lock(state.assets);
@@ -431,6 +441,8 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
 
   if (state.mode == GameState::Play)
   {
+    state.time += dt;
+
     bool inputaccepted = false;
 
     update_debug_overlay(input, &inputaccepted);
@@ -497,15 +509,6 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
 
     update_meshes(state.scene);
     update_particlesystems(state.scene, state.camera, dt);
-
-    state.writeframe->camera = state.camera;
-
-    asset_guard lock(state.assets);
-
-    buildgeometrylist(platform, state, state.writeframe->geometry);
-    buildobjectlist(platform, state, state.writeframe->objects);
-    buildcasterlist(platform, state, state.writeframe->casters);
-    buildlightlist(platform, state, state.writeframe->lights);
   }
 
   if (input.keys[KB_KEY_ESCAPE].pressed())
@@ -513,9 +516,7 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
     platform.terminate();
   }
 
-  state.writeframe->resourcetoken = state.resources.token();
-
-  state.writeframe = state.readyframe.exchange(state.writeframe);
+  state.resourcetoken = state.resources.token();
 
   END_TIMED_BLOCK(Update)
 }
@@ -528,14 +529,9 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
 
   GameState &state = *static_cast<GameState*>(platform.gamememory.data);
 
-  while (state.readyframe.load()->time <= state.readframe->time)
-    ;
-
-  state.readframe = state.readyframe.exchange(state.readframe);
-
   BEGIN_TIMED_BLOCK(Render, Color3(0.0f, 0.2f, 1.0f))
 
-  if (state.readframe->mode == GameState::Startup)
+  if (state.mode == GameState::Startup)
   {
     if (prepare_render_context(platform, state.rendercontext, state.assets))
     {
@@ -551,7 +547,7 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
     render_fallback(state.rendercontext, viewport, embeded::logo.data, embeded::logo.width, embeded::logo.height);
   }
 
-  if (state.readframe->mode == GameState::Load)
+  if (state.mode == GameState::Load)
   {
     RenderList renderlist(platform.renderscratchmemory, 8*1024*1024);
 
@@ -574,33 +570,47 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
     render(state.rendercontext, viewport, Camera(), renderlist, renderparams);
   }
 
-  if (state.readframe->mode == GameState::Play)
+  if (state.mode == GameState::Play)
   {
-    auto &camera = state.readframe->camera;
+    auto &camera = state.camera;
+
+    asset_guard lock(state.assets);
 
     RenderList renderlist(platform.renderscratchmemory, 8*1024*1024);
 
-    renderlist.push_casters(state.readframe->casters);
-    renderlist.push_geometry(state.readframe->geometry);
-    renderlist.push_forward(state.readframe->objects);
-    renderlist.push_lights(state.readframe->lights);
+    CasterList casters;
+    buildcasterlist(platform, state, casters);
+    renderlist.push_casters(casters);
 
-    render_debug_overlay(state.rendercontext, state.resources, renderlist, viewport, state.debugfont);
+    GeometryList geometry;
+    buildgeometrylist(platform, state, geometry);
+    renderlist.push_geometry(geometry);
+
+    ForwardList objects;
+    buildobjectlist(platform, state, objects);
+    renderlist.push_forward(objects);
+
+    LightList lights;
+    buildlightlist(platform, state, lights);
+    renderlist.push_lights(lights);
 
     RenderParams renderparams;
     renderparams.skybox = state.skybox;
     renderparams.sundirection = state.sundirection;
     renderparams.sunintensity = state.sunintensity;
-    renderparams.skyboxorientation = Transform::rotation(Vec3(0, 1, 0), -0.1f*state.readframe->time);
+    renderparams.skyboxorientation = Transform::rotation(Vec3(0, 1, 0), -0.1f*state.time);
+    renderparams.ssaoscale = 0.0f;
     renderparams.ssrstrength = 1.0f;
 
     DEBUG_MENU_VALUE("Lighting/SSR Strength", &renderparams.ssrstrength, 0.0f, 80.0f);
     DEBUG_MENU_VALUE("Lighting/Bloom Strength", &renderparams.bloomstrength, 0.0f, 8.0f);
 
+    render_debug_overlay(state.rendercontext, state.resources, renderlist, viewport, state.debugfont);
+
     render(state.rendercontext, viewport, camera, renderlist, renderparams);
   }
 
-  state.resources.release(state.readframe->resourcetoken);
+  state.resources.release(state.resourcetoken);
 
   END_TIMED_BLOCK(Render)
 }

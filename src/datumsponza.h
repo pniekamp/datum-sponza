@@ -57,31 +57,11 @@ struct GameState
   Scene::EntityId model;
   Scene::EntityId lights[4];
 
-  // Render Frames
-
-  struct RenderFrame
-  {
-    int mode;
-
-    float time;
-
-    Camera camera;
-
-    CasterList casters;
-    GeometryList geometry;
-    ForwardList objects;
-    LightList lights;
-
-    size_t resourcetoken;
-
-  } renderframes[3];
-
-  RenderFrame *readframe;
-  RenderFrame *writeframe;
-  std::atomic<RenderFrame*> readyframe;
+  size_t resourcetoken = 0;
 };
 
 
 void datumsponza_init(DatumPlatform::PlatformInterface &platform);
+void datumsponza_resize(DatumPlatform::PlatformInterface &platform, DatumPlatform::Viewport const &viewport);
 void datumsponza_update(DatumPlatform::PlatformInterface &platform, DatumPlatform::GameInput const &input, float dt);
 void datumsponza_render(DatumPlatform::PlatformInterface &platform, DatumPlatform::Viewport const &viewport);

@@ -14,6 +14,7 @@ using namespace leap;
 using namespace DatumPlatform;
 
 void datumsponza_init(DatumPlatform::PlatformInterface &platform);
+void datumsponza_resize(DatumPlatform::PlatformInterface &platform, DatumPlatform::Viewport const &viewport);
 void datumsponza_update(DatumPlatform::PlatformInterface &platform, DatumPlatform::GameInput const &input, float dt);
 void datumsponza_render(DatumPlatform::PlatformInterface &platform, DatumPlatform::Viewport const &viewport);
 
@@ -149,6 +150,8 @@ class Game
 
     void init(VkPhysicalDevice physicaldevice, VkDevice device, VkQueue renderqueue, uint32_t renderqueuefamily, VkQueue transferqueue, uint32_t transferqueuefamily);
 
+    void resize(int x, int y, int width, int height);
+
     void update(float dt);
 
     void render(VkImage image, VkSemaphore acquirecomplete, VkSemaphore rendercomplete, int x, int y, int width, int height);
@@ -168,6 +171,7 @@ class Game
     atomic<bool> m_running;
 
     game_init_t game_init;
+    game_resize_t game_resize;
     game_update_t game_update;
     game_render_t game_render;
 
@@ -194,10 +198,11 @@ Game::Game()
 void Game::init(VkPhysicalDevice physicaldevice, VkDevice device, VkQueue renderqueue, uint32_t renderqueuefamily, VkQueue transferqueue, uint32_t transferqueuefamily)
 {
   game_init = datumsponza_init;
+  game_resize = datumsponza_resize;
   game_update = datumsponza_update;
   game_render = datumsponza_render;
 
-  if (!game_init || !game_update || !game_render)
+  if (!game_init || !game_resize || !game_update || !game_render)
     throw std::runtime_error("Unable to init game code");
 
   RenderDevice renderdevice = {};
@@ -211,6 +216,16 @@ void Game::init(VkPhysicalDevice physicaldevice, VkDevice device, VkQueue render
   game_init(m_platform);
 
   m_running = true;
+}
+
+
+///////////////////////// Game::resize //////////////////////////////////////
+void Game::resize(int x, int y, int width, int height)
+{
+  if (m_running)
+  {
+    game_resize(m_platform, { x, y, width, height });
+  }
 }
 
 
@@ -865,6 +880,8 @@ void Window::resize(int width, int height)
     game->inputbuffer().register_viewport(0, 0, width, height);
 
     vulkan.resize();
+
+    game->resize(0, 0, width, height);
   }
 }
 
@@ -1014,12 +1031,10 @@ void Window::mousemove(xcb_motion_notify_event_t const *event)
 }
 
 
-
 //|//////////////////// Window::show ////////////////////////////////////////
 void Window::show()
 {
 }
-
 
 
 //|---------------------- main ----------------------------------------------
@@ -1041,51 +1056,34 @@ int main(int argc, char *args[])
 
     game.init(vulkan.physicaldevice, vulkan.device, vulkan.renderqueue, vulkan.renderqueuefamily, vulkan.transferqueue, vulkan.transferqueuefamily);
 
-    thread updatethread([&]() {
+    int hz = 60;
 
-      int hz = 60;
+    auto dt = std::chrono::nanoseconds(std::chrono::seconds(1)) / hz;
 
-      auto dt = std::chrono::nanoseconds(std::chrono::seconds(1)) / hz;
+    auto tick = std::chrono::high_resolution_clock::now();
 
-      auto tick = std::chrono::high_resolution_clock::now();
-
-      while (game.running())
-      {
-        game.update(1.0f/hz);
-
-        tick += dt;
-
-        while (std::chrono::high_resolution_clock::now() < tick)
-          ;
-      }
-    });
-
-    try
+    while (game.running())
     {
-      while (game.running())
+      if (xcb_generic_event_t *event = xcb_poll_for_event(window.connection))
       {
-        if (xcb_generic_event_t *event = xcb_poll_for_event(window.connection))
-        {
-          window.handle_event(event);
+        window.handle_event(event);
 
-          free(event);
-        }
-        else
+        free(event);
+      }
+      else if (std::chrono::high_resolution_clock::now() > tick)
+      {
+        while (std::chrono::high_resolution_clock::now() > tick)
         {
-          vulkan.acquire();
-          game.render(vulkan.presentimages[vulkan.imageindex], vulkan.acquirecomplete, vulkan.rendercomplete, 0, 0, window.width, window.height);
-          vulkan.present();
+          game.update(1.0f/hz);
+
+          tick += dt;
         }
+
+        vulkan.acquire();
+        game.render(vulkan.presentimages[vulkan.imageindex], vulkan.acquirecomplete, vulkan.rendercomplete, 0, 0, window.width, window.height);
+        vulkan.present();
       }
     }
-    catch(const exception &e)
-    {
-      cout << "Critical Error: " << e.what() << endl;
-
-      game.terminate();
-    }
-
-    updatethread.join();
 
     vulkan.destroy();
   }
