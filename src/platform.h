@@ -15,6 +15,7 @@
 #include <mutex>
 #include <atomic>
 #include <condition_variable>
+#include <functional>
 #include <fstream>
 
 namespace DatumPlatform
@@ -125,7 +126,7 @@ namespace DatumPlatform
     public:
       FileHandle(const char *path);
 
-      void read(uint64_t position, void *buffer, std::size_t n);
+      void read(uint64_t position, void *buffer, std::size_t bytes);
 
     private:
 
@@ -133,7 +134,5 @@ namespace DatumPlatform
 
       std::fstream m_fio;
   };
-
-
 
 } // namespace

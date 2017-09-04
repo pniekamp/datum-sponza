@@ -879,9 +879,12 @@ void Window::resize(int width, int height)
 
     game->inputbuffer().register_viewport(0, 0, width, height);
 
-    vulkan.resize();
+    if (vulkan.surface)
+    {
+      vulkan.resize();
 
-    game->resize(0, 0, width, height);
+      game->resize(0, 0, width, height);
+    }
   }
 }
 
