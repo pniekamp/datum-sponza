@@ -79,22 +79,22 @@ void datumsponza_init(PlatformInterface &platform)
   state.fire = state.resources.create<ParticleSystem>(state.assets.find(fire->id + 1));
 
   state.lights[0] = state.scene.create<Entity>();
-  state.scene.add_component<TransformComponent>(state.lights[0], Transform::translation(Vec3(4.85f, 1.35f, 1.45f))*Transform::rotation(Vec3(0, 0, 1), pi<float>()/2));
+  state.scene.add_component<TransformComponent>(state.lights[0], Transform::translation(Vec3(4.85f, 1.35f, 1.45f)));
   state.scene.add_component<PointLightComponent>(state.lights[0], Color3(1.0f, 0.5f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
   state.scene.add_component<ParticleSystemComponent>(state.lights[0], state.fire, ParticleSystemComponent::Visible);
 
   state.lights[1] = state.scene.create<Entity>();
-  state.scene.add_component<TransformComponent>(state.lights[1], Transform::translation(Vec3(4.85f, 1.35f, -2.20f))*Transform::rotation(Vec3(0, 0, 1), pi<float>()/2));
+  state.scene.add_component<TransformComponent>(state.lights[1], Transform::translation(Vec3(4.85f, 1.35f, -2.20f)));
   state.scene.add_component<PointLightComponent>(state.lights[1], Color3(1.0f, 0.3f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
   state.scene.add_component<ParticleSystemComponent>(state.lights[1], state.fire, ParticleSystemComponent::Visible);
 
   state.lights[2] = state.scene.create<Entity>();
-  state.scene.add_component<TransformComponent>(state.lights[2], Transform::translation(Vec3(-6.20f, 1.35f, -2.20f))*Transform::rotation(Vec3(0, 0, 1), pi<float>()/2));
+  state.scene.add_component<TransformComponent>(state.lights[2], Transform::translation(Vec3(-6.20f, 1.35f, -2.20f)));
   state.scene.add_component<PointLightComponent>(state.lights[2], Color3(1.0f, 0.5f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
   state.scene.add_component<ParticleSystemComponent>(state.lights[2], state.fire, ParticleSystemComponent::Visible);
 
   state.lights[3] = state.scene.create<Entity>();
-  state.scene.add_component<TransformComponent>(state.lights[3], Transform::translation(Vec3(-6.20f, 1.35f, 1.45f))*Transform::rotation(Vec3(0, 0, 1), pi<float>()/2));
+  state.scene.add_component<TransformComponent>(state.lights[3], Transform::translation(Vec3(-6.20f, 1.35f, 1.45f)));
   state.scene.add_component<PointLightComponent>(state.lights[3], Color3(1.0f, 0.4f, 0.0f), Attenuation(0.4f, 0.0f, 1.0f));
   state.scene.add_component<ParticleSystemComponent>(state.lights[3], state.fire, ParticleSystemComponent::Visible);
 
