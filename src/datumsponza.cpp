@@ -14,7 +14,7 @@ using namespace DatumPlatform;
 ///////////////////////// GameState::Constructor ////////////////////////////
 GameState::GameState(StackAllocator<> const &allocator)
   : assets(allocator),
-    resources(&assets, allocator),
+    resources(assets, allocator),
     scene(allocator)
 {
 }
@@ -108,7 +108,7 @@ void datumsponza_init(PlatformInterface &platform)
   state.envmaps[2] = make_tuple(Vec3(-0.625f, 1.95f, -4.6f), Vec3(28.0f, 4.0f, 3.7f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 2)));
   state.envmaps[3] = make_tuple(Vec3(0.0f, 9.0f, 0.0f), Vec3(30.0f, 10.0f, 15.0f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 3)));
 
-//  state.skybox = state.resources.create<SkyBox>(state.assets.find(envmaps->id + 0));
+  //state.skybox = state.resources.create<SkyBox>(state.assets.find(envmaps->id + 0));
 
   state.camera.lookat(Vec3(0, 1, 0), Vec3(1, 1, 0), Vec3(0, 1, 0));
 
@@ -488,7 +488,7 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
     state.camera = normalise(state.camera);
 
     Color3 lampintensity = Color3(8.0f, 8.0f, 8.0f);
-    DEBUG_MENU_VALUE("Scene/Lamp Intensity", &lampintensity, Color3(0.0f, 0.0f, 0.0f), Color3(16.0f, 16.0f, 16.0f));
+    DEBUG_MENU_VALUE("Scene/Lamp Intensity", &lampintensity, Color3(0.0f, 0.0f, 0.0f), Color3(16.0f, 16.0f, 16.0f))
 
     for(auto &light : state.lights)
     {
@@ -498,7 +498,7 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
     }
 
     float floorroughness = 0.05f;
-    DEBUG_MENU_VALUE("Scene/Floor Roughness", &floorroughness, 0.0f, 1.0f);
+    DEBUG_MENU_VALUE("Scene/Floor Roughness", &floorroughness, 0.0f, 1.0f)
 
     if (auto model = state.scene.get<Model>(state.model))
     {
@@ -602,8 +602,8 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
     renderparams.ssaoscale = 0.0f;
     renderparams.ssrstrength = 1.0f;
 
-    DEBUG_MENU_VALUE("Lighting/SSR Strength", &renderparams.ssrstrength, 0.0f, 80.0f);
-    DEBUG_MENU_VALUE("Lighting/Bloom Strength", &renderparams.bloomstrength, 0.0f, 8.0f);
+    DEBUG_MENU_VALUE("Lighting/SSR Strength", &renderparams.ssrstrength, 0.0f, 80.0f)
+    DEBUG_MENU_VALUE("Lighting/Bloom Strength", &renderparams.bloomstrength, 0.0f, 8.0f)
 
     render_debug_overlay(state.rendercontext, state.resources, renderlist, viewport, state.debugfont);
 

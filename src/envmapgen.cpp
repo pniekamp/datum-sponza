@@ -194,7 +194,6 @@ class Renderer
     Vulkan::CommandBuffer commandbuffer;
     Vulkan::Semaphore acquirecomplete;
     Vulkan::Semaphore rendercomplete;
-    Vulkan::Fence transfercomplete;
 
     Vulkan::StorageBuffer transferbuffer;
     Vulkan::MemoryView<uint64_t> transfermemory;
@@ -203,7 +202,7 @@ class Renderer
 };
 
 Renderer::Renderer(StackAllocator<> const &allocator)
-  : assets(allocator), resources(&assets, allocator)
+  : assets(allocator), resources(assets, allocator)
 {
 }
 
@@ -225,21 +224,9 @@ void Renderer::render(Camera const &camera, PushBuffer const &renderables, void 
 
   render(rendercontext, viewport, camera, renderables, renderparams);
 
-  begin(rendercontext.vulkan, commandbuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+  wait_semaphore(rendercontext.vulkan, rendercomplete);
 
-  setimagelayout(commandbuffer, rendercontext.colorbuffer.image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 });
-
-  blit(commandbuffer, rendercontext.colorbuffer.image, 0, 0, rendercontext.fbowidth, rendercontext.fbowidth, transferbuffer, 0, rendercontext.fbowidth, rendercontext.fboheight);
-
-  setimagelayout(commandbuffer, rendercontext.colorbuffer.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 });
-
-  barrier(commandbuffer);
-
-  end(rendercontext.vulkan, commandbuffer);
-
-  submit(rendercontext.vulkan, commandbuffer, rendercomplete, transfercomplete);
-
-  wait_fence(rendercontext.vulkan, transfercomplete);
+  blit(rendercontext, rendercontext.colorbuffer, transferbuffer, 0);
 
   uint64_t *src = transfermemory;
   uint32_t *dst = (uint32_t*)bits;
@@ -300,7 +287,6 @@ void initialise_renderer(Platform &platform, Renderer &renderer, int width, int 
 
   renderer.acquirecomplete = create_semaphore(renderer.rendercontext.vulkan);
   renderer.rendercomplete = create_semaphore(renderer.rendercontext.vulkan);
-  renderer.transfercomplete = create_fence(renderer.rendercontext.vulkan);
 
   renderer.transferbuffer = create_transferbuffer(renderer.rendercontext.vulkan, width * height * sizeof(uint64_t));
   renderer.transfermemory = map_memory<uint64_t>(renderer.rendercontext.vulkan, renderer.transferbuffer, 0, renderer.transferbuffer.size);
@@ -310,7 +296,7 @@ void initialise_renderer(Platform &platform, Renderer &renderer, int width, int 
 //|---------------------- main ----------------------------------------------
 //|--------------------------------------------------------------------------
 
-void image_render_envmap(Renderer &platform, Vec3 position, PushBuffer const &renderables, int width, int height, void *bits)
+void image_render_envmap(Renderer &renderer, Vec3 position, PushBuffer const &renderables, int width, int height, void *bits)
 {
   Camera camera;
   camera.set_exposure(1);
@@ -322,37 +308,37 @@ void image_render_envmap(Renderer &platform, Vec3 position, PushBuffer const &re
   // Right
 
   camera.lookat(camera.position() + Vec3(1, 0, 0), Vec3(0, 1, 0));
-  platform.render(camera, renderables, dst);
+  renderer.render(camera, renderables, dst);
   dst += width * height;
 
   // Left
 
   camera.lookat(camera.position() + Vec3(-1, 0, 0), Vec3(0, 1, 0));
-  platform.render(camera, renderables, dst);
+  renderer.render(camera, renderables, dst);
   dst += width * height;
 
   // Down
 
   camera.lookat(camera.position() + Vec3(0, -1, 0), Vec3(0, 0, -1));
-  platform.render(camera, renderables, dst);
+  renderer.render(camera, renderables, dst);
   dst += width * height;
 
   // Up
 
   camera.lookat(camera.position() + Vec3(0, 1, 0), Vec3(0, 0, 1));
-  platform.render(camera, renderables, dst);
+  renderer.render(camera, renderables, dst);
   dst += width * height;
 
   // Forward
 
   camera.lookat(camera.position() + Vec3(0, 0, -1), Vec3(0, 1, 0));
-  platform.render(camera, renderables, dst);
+  renderer.render(camera, renderables, dst);
   dst += width * height;
 
   // Backwards
 
   camera.lookat(camera.position() + Vec3(0, 0, 1), Vec3(0, 1, 0));
-  platform.render( camera, renderables, dst);
+  renderer.render( camera, renderables, dst);
   dst += width * height;
 }
 
