@@ -505,6 +505,7 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
       state.resources.update(model->materials[8], Color4(1.0f, 1.0f, 1.0f, 1.0f), 0.0f, floorroughness, 1.0f, 0.0f);
     }
 
+    DEBUG_MENU_VALUE("Lighting/Sun Intensity", &state.sunintensity, Color3(0, 0, 0), Color3(10, 10, 10))
     DEBUG_MENU_ENTRY("Lighting/Sun Direction", state.sundirection = normalise(debug_menu_value("Lighting/Sun Direction", state.sundirection, Vec3(-1), Vec3(1))))
 
     update_meshes(state.scene);
@@ -600,8 +601,10 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
     renderparams.sunintensity = state.sunintensity;
     renderparams.skyboxorientation = Transform::rotation(Vec3(0, 1, 0), -0.1f*state.time);
     renderparams.ssaoscale = 0.0f;
+    renderparams.fogdensity = 0.0f;
     renderparams.ssrstrength = 1.0f;
 
+    DEBUG_MENU_VALUE("Lighting/Fog Strength", &renderparams.fogdensity, 0.0f, 10.0f)
     DEBUG_MENU_VALUE("Lighting/SSR Strength", &renderparams.ssrstrength, 0.0f, 80.0f)
     DEBUG_MENU_VALUE("Lighting/Bloom Strength", &renderparams.bloomstrength, 0.0f, 8.0f)
 
