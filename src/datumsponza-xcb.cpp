@@ -825,7 +825,7 @@ void Window::init(Game *gameptr)
   auto utf8_string = xcb_intern_atom_reply(connection, xcb_intern_atom(connection, 1, 11, "UTF8_STRING"), 0);
   auto _net_wm_name = xcb_intern_atom_reply(connection, xcb_intern_atom(connection, 1, 12, "_NET_WM_NAME"), 0);
 
-  xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, _net_wm_name->atom, utf8_string->atom, 8, 9, "DatumSponza");
+  xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, _net_wm_name->atom, utf8_string->atom, 8, 11, "DatumSponza");
 
   wm_protocols = xcb_intern_atom_reply(connection, xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS"), 0);
 

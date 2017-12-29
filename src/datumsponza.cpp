@@ -59,7 +59,7 @@ void datumsponza_init(PlatformInterface &platform)
   state.unitsphere = state.resources.create<Mesh>(state.assets.find(CoreAsset::unit_sphere));
   state.defaultmaterial = state.resources.create<Material>(state.assets.find(CoreAsset::default_material));
 
-  state.sundirection = Vec3(0.3698f,-0.9245f,-0.09245f);
+  state.sundirection = Vec3(0.5297f,-0.8123f,-0.2438f);
   state.sunintensity = Color3(8.0f, 7.56f, 7.88f);
 
   state.skybox = state.resources.create<SkyBox>(state.assets.find(CoreAsset::default_skybox));
@@ -104,13 +104,16 @@ void datumsponza_init(PlatformInterface &platform)
     throw runtime_error("Envmap Assets Load Failure");
 
   state.envmaps[0] = make_tuple(Vec3(-0.625f, 2.45f, -0.35f), Vec3(28.0f, 5.0f, 4.8f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 0)));
-  state.envmaps[1] = make_tuple(Vec3(-0.625f, 1.95f, 3.9f), Vec3(28.0f, 4.0f, 3.7f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 1)));
-  state.envmaps[2] = make_tuple(Vec3(-0.625f, 1.95f, -4.6f), Vec3(28.0f, 4.0f, 3.7f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 2)));
+  state.envmaps[1] = make_tuple(Vec3(-0.625f, 1.95f, 3.95f), Vec3(28.0f, 4.0f, 3.8f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 1)));
+  state.envmaps[2] = make_tuple(Vec3(-0.625f, 1.95f, -4.65f), Vec3(28.0f, 4.0f, 3.8f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 2)));
   state.envmaps[3] = make_tuple(Vec3(0.0f, 9.0f, 0.0f), Vec3(30.0f, 10.0f, 15.0f), state.resources.create<EnvMap>(state.assets.find(envmaps->id + 3)));
 
   //state.skybox = state.resources.create<SkyBox>(state.assets.find(envmaps->id + 0));
 
-  state.camera.lookat(Vec3(0, 1, 0), Vec3(1, 1, 0), Vec3(0, 1, 0));
+  //state.camera.lookat(Vec3(0, 1, 0), Vec3(1, 1, 0), Vec3(0, 1, 0));
+
+  state.camera.set_position(Vec3(-7.03893f, 5.22303f, 1.03818f));
+  state.camera.set_rotation(Quaternion3f(0.82396f, -0.0277191f, -0.56565f, -0.0190294f));
 
   prefetch_core_assets(platform, state.assets);
 
@@ -487,7 +490,7 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
 
     state.camera = normalise(state.camera);
 
-    Color3 lampintensity = Color3(8.0f, 8.0f, 8.0f);
+    Color3 lampintensity = Color3(0.7257f, 0.2752f, 0.1001f);
     DEBUG_MENU_VALUE("Scene/Lamp Intensity", &lampintensity, Color3(0.0f, 0.0f, 0.0f), Color3(16.0f, 16.0f, 16.0f))
 
     for(auto &light : state.lights)
@@ -497,7 +500,7 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
       lightcomponent.set_intensity(lampintensity);
     }
 
-    float floorroughness = 0.05f;
+    float floorroughness = 1.0f;
     DEBUG_MENU_VALUE("Scene/Floor Roughness", &floorroughness, 0.0f, 1.0f)
 
     if (auto model = state.scene.get<Model>(state.model))
@@ -505,8 +508,13 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
       state.resources.update(model->materials[8], Color4(1.0f, 1.0f, 1.0f, 1.0f), 0.0f, floorroughness, 1.0f, 0.0f);
     }
 
-    DEBUG_MENU_VALUE("Lighting/Sun Intensity", &state.sunintensity, Color3(0, 0, 0), Color3(10, 10, 10))
+    float sunintensity = 12.0f;
+    float suntemperature = 3500.0f;
+    DEBUG_MENU_VALUE("Lighting/Sun Intensity", &sunintensity, 0.0f, 16.0f);
+    DEBUG_MENU_VALUE("Lighting/Sun Temperature", &suntemperature, 1000.0f, 8000.0f);
     DEBUG_MENU_ENTRY("Lighting/Sun Direction", state.sundirection = normalise(debug_menu_value("Lighting/Sun Direction", state.sundirection, Vec3(-1), Vec3(1))))
+
+    state.sunintensity = sunintensity * kelvin_rgb(suntemperature);
 
     update_meshes(state.scene);
     update_particlesystems(state.scene, state.camera, dt);
@@ -541,6 +549,7 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
       renderparams.height = viewport.height;
       renderparams.aspect = state.aspect;
       renderparams.ssaoscale = 0.0f;
+      renderparams.fogdensity = 0.15f;
 
       prepare_render_pipeline(state.rendercontext, renderparams);
     }
@@ -601,7 +610,7 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
     renderparams.sunintensity = state.sunintensity;
     renderparams.skyboxorientation = Transform::rotation(Vec3(0, 1, 0), -0.1f*state.time);
     renderparams.ssaoscale = 0.0f;
-    renderparams.fogdensity = 0.0f;
+    renderparams.fogdensity = 0.15f;
     renderparams.ssrstrength = 1.0f;
 
     DEBUG_MENU_VALUE("Lighting/Fog Strength", &renderparams.fogdensity, 0.0f, 10.0f)

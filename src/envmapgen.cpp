@@ -299,7 +299,7 @@ void initialise_renderer(Platform &platform, Renderer &renderer, int width, int 
 void image_render_envmap(Renderer &renderer, Vec3 position, PushBuffer const &renderables, int width, int height, void *bits)
 {
   Camera camera;
-  camera.set_exposure(1);
+  camera.set_exposure(0.5f);
   camera.set_projection(pi<float>()/2, 1);
   camera.set_position(position);
 
@@ -456,13 +456,13 @@ int main(int argc, char **argv)
 
     write_imag_asset(fout, 0, width, height, layers, levels, PackImageHeader::rgbe, payload.data());
 
-    image_render_envmap(renderer, Vec3(-0.625f, 1.95f, 3.9f), renderlist, width, height, payload.data());
+    image_render_envmap(renderer, Vec3(-0.625f, 1.95f, 3.95f), renderlist, width, height, payload.data());
 
     image_buildmips_cube_ibl(width, height, levels, payload.data());
 
     write_imag_asset(fout, 1, width, height, layers, levels, PackImageHeader::rgbe, payload.data());
 
-    image_render_envmap(renderer, Vec3(-0.625f, 1.95f, -4.6f), renderlist, width, height, payload.data());
+    image_render_envmap(renderer, Vec3(-0.625f, 1.95f, -4.65f), renderlist, width, height, payload.data());
 
     image_buildmips_cube_ibl(width, height, levels, payload.data());
 
