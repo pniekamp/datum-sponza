@@ -614,6 +614,7 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
     renderparams.ssrstrength = 1.0f;
 
     DEBUG_MENU_VALUE("Lighting/Fog Strength", &renderparams.fogdensity, 0.0f, 10.0f)
+    DEBUG_MENU_VALUE("Lighting/Fog Attenuation", &renderparams.fogattenuation.y, 0.0f, 10.0f)
     DEBUG_MENU_VALUE("Lighting/SSR Strength", &renderparams.ssrstrength, 0.0f, 80.0f)
     DEBUG_MENU_VALUE("Lighting/Bloom Strength", &renderparams.bloomstrength, 0.0f, 8.0f)
 

@@ -509,7 +509,7 @@ void Vulkan::init(HINSTANCE hinstance, HWND hwnd)
   //
 
   bool vsync = true;
-  uint32_t desiredimages = 2;
+  uint32_t desiredimages = 3;
 
   VkSurfaceCapabilitiesKHR surfacecapabilities;
   vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicaldevice, surface, &surfacecapabilities);
@@ -1111,8 +1111,7 @@ int main(int argc, char *args[])
         TranslateMessage(&msg);
         DispatchMessage(&msg);
       }
-
-      if (std::chrono::high_resolution_clock::now() > tick)
+      else
       {
         while (std::chrono::high_resolution_clock::now() > tick)
         {
