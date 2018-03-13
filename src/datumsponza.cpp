@@ -60,7 +60,7 @@ void datumsponza_init(PlatformInterface &platform)
   state.defaultmaterial = state.resources.create<Material>(state.assets.find(CoreAsset::default_material));
 
   state.sundirection = Vec3(0.5297f,-0.8123f,-0.2438f);
-  state.sunintensity = Color3(8.0f, 7.56f, 7.88f);
+  state.sunintensity = Color3(8.0f, 7.65f, 6.71f);
 
   state.skybox = state.resources.create<SkyBox>(state.assets.find(CoreAsset::default_skybox));
 
@@ -549,7 +549,7 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
       renderparams.height = viewport.height;
       renderparams.aspect = state.aspect;
       renderparams.ssaoscale = 0.0f;
-      renderparams.fogdensity = 0.15f;
+      renderparams.fogdensity = 1.75f;
 
       prepare_render_pipeline(state.rendercontext, renderparams);
     }
@@ -610,7 +610,7 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
     renderparams.sunintensity = state.sunintensity;
     renderparams.skyboxorientation = Transform::rotation(Vec3(0, 1, 0), -0.1f*state.time);
     renderparams.ssaoscale = 0.0f;
-    renderparams.fogdensity = 0.15f;
+    renderparams.fogdensity = 1.75f;
     renderparams.ssrstrength = 1.0f;
 
     DEBUG_MENU_VALUE("Lighting/Fog Strength", &renderparams.fogdensity, 0.0f, 10.0f)

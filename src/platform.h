@@ -44,13 +44,14 @@ namespace DatumPlatform
         MouseMoveZ,
         MousePress,
         MouseRelease,
+        Text
       };
 
       struct InputEvent
       {
         EventType type;
 
-        int data;
+        int64_t data;
       };
 
     public:
@@ -64,6 +65,8 @@ namespace DatumPlatform
 
       void register_keypress(int key);
       void register_keyrelease(int key);
+
+      void register_textinput(uint32_t codepoint);
 
       void release_all();
 
@@ -126,7 +129,7 @@ namespace DatumPlatform
     public:
       FileHandle(const char *path);
 
-      void read(uint64_t position, void *buffer, std::size_t bytes);
+      size_t read(uint64_t position, void *buffer, std::size_t bytes);
 
     private:
 

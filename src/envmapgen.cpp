@@ -34,7 +34,7 @@ class Platform : public PlatformInterface
 
     handle_t open_handle(const char *identifier) override;
 
-    void read_handle(handle_t handle, uint64_t position, void *buffer, size_t bytes) override;
+    size_t read_handle(handle_t handle, uint64_t position, void *buffer, size_t bytes) override;
 
     void close_handle(handle_t handle) override;
 
@@ -61,9 +61,9 @@ PlatformInterface::handle_t Platform::open_handle(const char *identifier)
   return new FileHandle(pathstring(identifier).c_str());
 }
 
-void Platform::read_handle(PlatformInterface::handle_t handle, uint64_t position, void *buffer, size_t bytes)
+size_t Platform::read_handle(PlatformInterface::handle_t handle, uint64_t position, void *buffer, size_t bytes)
 {
-  static_cast<FileHandle*>(handle)->read(position, buffer, bytes);
+  return static_cast<FileHandle*>(handle)->read(position, buffer, bytes);
 }
 
 void Platform::close_handle(PlatformInterface::handle_t handle)
@@ -92,7 +92,7 @@ void initialise_platform(Platform &platform, size_t gamememorysize)
   appinfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
   appinfo.pApplicationName = "Datum Sponza";
   appinfo.pEngineName = "Datum";
-  appinfo.apiVersion = VK_MAKE_VERSION(1, 0, 8);
+  appinfo.apiVersion = VK_MAKE_VERSION(1, 0, 65);
 
   VkInstanceCreateInfo instanceinfo = {};
   instanceinfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;

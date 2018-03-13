@@ -43,7 +43,7 @@ class Platform : public PlatformInterface
 
     handle_t open_handle(const char *identifier) override;
 
-    void read_handle(handle_t handle, uint64_t position, void *buffer, size_t bytes) override;
+    size_t read_handle(handle_t handle, uint64_t position, void *buffer, size_t bytes) override;
 
     void close_handle(handle_t handle) override;
 
@@ -114,9 +114,9 @@ PlatformInterface::handle_t Platform::open_handle(const char *identifier)
 
 
 ///////////////////////// PlatformCore::read_handle /////////////////////////
-void Platform::read_handle(PlatformInterface::handle_t handle, uint64_t position, void *buffer, size_t bytes)
+size_t Platform::read_handle(PlatformInterface::handle_t handle, uint64_t position, void *buffer, size_t bytes)
 {
-  static_cast<FileHandle*>(handle)->read(position, buffer, bytes);
+  return static_cast<FileHandle*>(handle)->read(position, buffer, bytes);
 }
 
 
@@ -334,7 +334,7 @@ void Vulkan::init(HINSTANCE hinstance, HWND hwnd)
   appinfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
   appinfo.pApplicationName = "Datum Sponza";
   appinfo.pEngineName = "Datum";
-  appinfo.apiVersion = VK_MAKE_VERSION(1, 0, 8);
+  appinfo.apiVersion = VK_MAKE_VERSION(1, 0, 65);
 
 #if VALIDATION
   const char *validationlayers[] = { "VK_LAYER_LUNARG_standard_validation" };
@@ -509,13 +509,7 @@ void Vulkan::init(HINSTANCE hinstance, HWND hwnd)
   //
 
   bool vsync = true;
-  uint32_t desiredimages = 3;
-
-  VkSurfaceCapabilitiesKHR surfacecapabilities;
-  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicaldevice, surface, &surfacecapabilities);
-
-  if (surfacecapabilities.maxImageCount > 0 && desiredimages > surfacecapabilities.maxImageCount)
-    desiredimages = surfacecapabilities.maxImageCount;
+  uint32_t desiredimages = 2;
 
   uint32_t presentmodescount = 0;
   vkGetPhysicalDeviceSurfacePresentModesKHR(physicaldevice, surface, &presentmodescount, nullptr);
@@ -526,9 +520,10 @@ void Vulkan::init(HINSTANCE hinstance, HWND hwnd)
   VkPresentModeKHR presentmode = VK_PRESENT_MODE_FIFO_KHR;
   for(size_t i = 0; i < presentmodescount; ++i)
   {
-    if (!vsync && presentmodes[i] == VK_PRESENT_MODE_MAILBOX_KHR)
+    if (presentmodes[i] == VK_PRESENT_MODE_MAILBOX_KHR)
     {
       presentmode = presentmodes[i];
+      desiredimages = 3;
       break;
     }
 
@@ -537,6 +532,12 @@ void Vulkan::init(HINSTANCE hinstance, HWND hwnd)
       presentmode = presentmodes[i];
     }
   }
+
+  VkSurfaceCapabilitiesKHR surfacecapabilities;
+  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicaldevice, surface, &surfacecapabilities);
+
+  if (surfacecapabilities.maxImageCount > 0 && desiredimages > surfacecapabilities.maxImageCount)
+    desiredimages = surfacecapabilities.maxImageCount;
 
   VkSurfaceTransformFlagBitsKHR pretransform = (surfacecapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR) ? VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR : surfacecapabilities.currentTransform;
 
@@ -758,6 +759,8 @@ struct Window
 
   void resize(int width, int height);
 
+  void paint(UINT msg, WPARAM wParam, LPARAM lParam);
+
   void keypress(UINT msg, WPARAM wParam, LPARAM lParam);
   void keyrelease(UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -773,6 +776,8 @@ struct Window
   Game *game;
 
   HWND hwnd;
+
+  bool visible;
 
   bool mousewrap;
   int mousex, mousey;
@@ -793,9 +798,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       break;
 
     case WM_PAINT:
-      vulkan.acquire();
-      window.game->render(vulkan.presentimages[vulkan.imageindex], vulkan.acquirecomplete, vulkan.rendercomplete, 0, 0, window.width, window.height);
-      vulkan.present();
+      window.paint(uMsg, wParam, lParam);
       break;
 
     case WM_SIZE:
@@ -848,6 +851,7 @@ void Window::init(HINSTANCE hinstance, Game *gameptr)
 {
   game = gameptr;
 
+  visible = false;
   mousewrap = false;
 
   WNDCLASSEX winclass;
@@ -905,6 +909,7 @@ void Window::init(HINSTANCE hinstance, Game *gameptr)
   keysym[VK_SHIFT] = KB_KEY_SHIFT;
   keysym[VK_CONTROL] = KB_KEY_CONTROL;
   keysym[VK_LEFT] = KB_KEY_LEFT; keysym[VK_DOWN] = KB_KEY_DOWN; keysym[VK_RIGHT] = KB_KEY_RIGHT; keysym[VK_UP] = KB_KEY_UP;
+  keysym[VK_HOME] = KB_KEY_HOME; keysym[VK_END] = KB_KEY_END; keysym[VK_INSERT] = KB_KEY_INSERT; keysym[VK_DELETE] = KB_KEY_DELETE;
   keysym[VK_F1] = KB_KEY_F1;  keysym[VK_F2] = KB_KEY_F2;  keysym[VK_F3] = KB_KEY_F3;  keysym[VK_F4] = KB_KEY_F4;  keysym[VK_F5] = KB_KEY_F5;  keysym[VK_F6] = KB_KEY_F6;  keysym[VK_F7] = KB_KEY_F7;  keysym[VK_F8] = KB_KEY_F8;  keysym[VK_F9] = KB_KEY_F9;  keysym[VK_F10] = KB_KEY_F10;
   keysym['1'] = '1';  keysym['2'] = '2';  keysym['3'] = '3';  keysym['4'] = '4';  keysym['5'] = '5';  keysym['6'] = '6';  keysym['7'] = '7';  keysym['8'] = '8';  keysym['9'] = '9';  keysym['0'] = '0';  keysym[VK_OEM_MINUS] = '-';  keysym[VK_OEM_PLUS] = '=';  keysym[VK_BACK] = KB_KEY_BACKSPACE;
   keysym['Q'] = 'Q';  keysym['W'] = 'W';  keysym['E'] = 'E';  keysym['R'] = 'R';  keysym['T'] = 'T';  keysym['Y'] = 'Y';  keysym['U'] = 'U';  keysym['I'] = 'I';  keysym['O'] = 'O';  keysym['P'] = 'P';  keysym['['] = '[';  keysym[']'] = ']';  keysym['\\'] = '\\';
@@ -930,6 +935,20 @@ void Window::resize(int width, int height)
 
       game->resize(0, 0, width, height);
     }
+  }
+
+  window.visible = (vulkan.surface && width != 0 && height != 0);
+}
+
+
+//|//////////////////// Window::paint ///////////////////////////////////////
+void Window::paint(UINT msg, WPARAM wParam, LPARAM lParam)
+{
+  if (window.visible)
+  {
+    vulkan.acquire();
+    window.game->render(vulkan.presentimages[vulkan.imageindex], vulkan.acquirecomplete, vulkan.rendercomplete, 0, 0, window.width, window.height);
+    vulkan.present();
   }
 }
 
@@ -1073,6 +1092,8 @@ void Window::mousemove(UINT msg, WPARAM wParam, LPARAM lParam)
 void Window::show()
 {
   ShowWindow(hwnd, SW_SHOW);
+
+  visible = (vulkan.surface && width != 0 && height != 0);
 }
 
 
@@ -1095,6 +1116,8 @@ int main(int argc, char *args[])
     window.show();
 
     game.init(vulkan.physicaldevice, vulkan.device, vulkan.renderqueue, vulkan.renderqueuefamily, vulkan.transferqueue, vulkan.transferqueuefamily);
+
+    game.resize(0, 0, window.width, window.height);
 
     int hz = 60;
 
