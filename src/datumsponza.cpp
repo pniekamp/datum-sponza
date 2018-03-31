@@ -115,8 +115,6 @@ void datumsponza_init(PlatformInterface &platform)
   state.camera.set_position(Vec3(-7.03893f, 5.22303f, 1.03818f));
   state.camera.set_rotation(Quaternion3f(0.82396f, -0.0277191f, -0.56565f, -0.0190294f));
 
-  prefetch_core_assets(platform, state.assets);
-
   state.mode = GameState::Startup;
 }
 
@@ -549,7 +547,7 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
       renderparams.height = viewport.height;
       renderparams.aspect = state.aspect;
       renderparams.ssaoscale = 0.0f;
-      renderparams.fogdensity = 1.75f;
+      renderparams.fogdensity = 0.55f;
 
       prepare_render_pipeline(state.rendercontext, renderparams);
     }
@@ -610,11 +608,13 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
     renderparams.sunintensity = state.sunintensity;
     renderparams.skyboxorientation = Transform::rotation(Vec3(0, 1, 0), -0.1f*state.time);
     renderparams.ssaoscale = 0.0f;
-    renderparams.fogdensity = 1.75f;
+    renderparams.fogdensity = 0.55f;
     renderparams.ssrstrength = 1.0f;
 
     DEBUG_MENU_VALUE("Lighting/Fog Strength", &renderparams.fogdensity, 0.0f, 10.0f)
     DEBUG_MENU_VALUE("Lighting/Fog Attenuation", &renderparams.fogattenuation.y, 0.0f, 10.0f)
+    DEBUG_MENU_VALUE("Lighting/Ambient Intensity", &renderparams.ambientintensity, 0.0f, 1.0f)
+    DEBUG_MENU_VALUE("Lighting/Specular Intensity", &renderparams.specularintensity, 0.0f, 1.0f)
     DEBUG_MENU_VALUE("Lighting/SSR Strength", &renderparams.ssrstrength, 0.0f, 80.0f)
     DEBUG_MENU_VALUE("Lighting/Bloom Strength", &renderparams.bloomstrength, 0.0f, 8.0f)
 

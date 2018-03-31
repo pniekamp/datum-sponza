@@ -1093,7 +1093,7 @@ void Window::show()
 {
   ShowWindow(hwnd, SW_SHOW);
 
-  visible = (vulkan.surface && width != 0 && height != 0);
+  visible = true;
 }
 
 

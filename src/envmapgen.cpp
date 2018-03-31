@@ -296,10 +296,10 @@ void initialise_renderer(Platform &platform, Renderer &renderer, int width, int 
 //|---------------------- main ----------------------------------------------
 //|--------------------------------------------------------------------------
 
-void image_render_envmap(Renderer &renderer, Vec3 position, PushBuffer const &renderables, int width, int height, void *bits)
+void image_render_envmap(Renderer &renderer, Vec3 position, float exposure, PushBuffer const &renderables, int width, int height, void *bits)
 {
   Camera camera;
-  camera.set_exposure(0.5f);
+  camera.set_exposure(exposure);
   camera.set_projection(pi<float>()/2, 1);
   camera.set_position(position);
 
@@ -450,25 +450,25 @@ int main(int argc, char **argv)
 
     vector<char> payload(image_datasize(width, height, layers, levels));
 
-    image_render_envmap(renderer, Vec3(-0.625f, 2.45f, -0.35f), renderlist, width, height, payload.data());
+    image_render_envmap(renderer, Vec3(-0.625f, 2.45f, -0.35f), 0.4f, renderlist, width, height, payload.data());
 
     image_buildmips_cube_ibl(width, height, levels, payload.data());
 
     write_imag_asset(fout, 0, width, height, layers, levels, PackImageHeader::rgbe, payload.data());
 
-    image_render_envmap(renderer, Vec3(-0.625f, 1.95f, 3.95f), renderlist, width, height, payload.data());
+    image_render_envmap(renderer, Vec3(-0.625f, 1.95f, 3.95f), 0.2f, renderlist, width, height, payload.data());
 
     image_buildmips_cube_ibl(width, height, levels, payload.data());
 
     write_imag_asset(fout, 1, width, height, layers, levels, PackImageHeader::rgbe, payload.data());
 
-    image_render_envmap(renderer, Vec3(-0.625f, 1.95f, -4.65f), renderlist, width, height, payload.data());
+    image_render_envmap(renderer, Vec3(-0.625f, 1.95f, -4.65f), 0.2f, renderlist, width, height, payload.data());
 
     image_buildmips_cube_ibl(width, height, levels, payload.data());
 
     write_imag_asset(fout, 2, width, height, layers, levels, PackImageHeader::rgbe, payload.data());
 
-    image_render_envmap(renderer, Vec3(0.0f, 9.0f, 0.0f), renderlist, width, height, payload.data());
+    image_render_envmap(renderer, Vec3(0.0f, 9.0f, 0.0f), 0.5f, renderlist, width, height, payload.data());
 
     image_buildmips_cube_ibl(width, height, levels, payload.data());
 
