@@ -10,6 +10,7 @@
 #include "datum/asset.h"
 #include "datum/renderer.h"
 #include "datum/scene.h"
+#include "datum/debug.h"
 #include "assetpacker.h"
 #include "ibl.h"
 #include <leap.h>
@@ -33,10 +34,14 @@ class Platform : public PlatformInterface
     RenderDevice render_device() override;
 
     handle_t open_handle(const char *identifier) override;
-
     size_t read_handle(handle_t handle, uint64_t position, void *buffer, size_t bytes) override;
-
     void close_handle(handle_t handle) override;
+
+    void show_cursor(bool show) override;
+    cursor_t create_cursor(int hx, int hy, int width, int height, void const *bits) override;
+    void set_cursor_image(cursor_t cursor) override;
+    void destroy_cursor(cursor_t cursor) override;
+    void set_cursor_position(float x, float y) override;
 
     void submit_work(void (*func)(PlatformInterface &, void*, void*), void *ldata, void *rdata) override;
 
@@ -69,6 +74,31 @@ size_t Platform::read_handle(PlatformInterface::handle_t handle, uint64_t positi
 void Platform::close_handle(PlatformInterface::handle_t handle)
 {
   delete static_cast<FileHandle*>(handle);
+}
+
+void Platform::show_cursor(bool show)
+{
+  throw runtime_error("Not Implemented");
+}
+
+PlatformInterface::cursor_t Platform::create_cursor(int hx, int hy, int width, int height, void const *bits)
+{
+  throw runtime_error("Not Implemented");
+}
+
+void Platform::set_cursor_image(cursor_t handle)
+{
+  throw runtime_error("Not Implemented");
+}
+
+void Platform::destroy_cursor(cursor_t handle)
+{
+  throw runtime_error("Not Implemented");
+}
+
+void Platform::set_cursor_position(float x, float y)
+{
+  throw runtime_error("Not Implemented");
 }
 
 void Platform::submit_work(void (*func)(PlatformInterface &, void*, void*), void *ldata, void *rdata)

@@ -31,8 +31,6 @@ struct GameState
 
   Camera camera;
 
-  float lastmousex, lastmousey, lastmousez;
-
   Sprite const *loader;
   Font const *debugfont;
   Mesh const *unitsphere;

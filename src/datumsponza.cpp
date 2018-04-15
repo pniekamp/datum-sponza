@@ -452,8 +452,8 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
     {
       if (input.mousebuttons[GameInput::Left].state == true)
       {
-        state.camera.yaw(1.5f * (state.lastmousex - input.mousex), Vec3(0, 1, 0));
-        state.camera.pitch(1.5f * (state.lastmousey - input.mousey));
+        state.camera.yaw(-1.5f * input.deltamousex, Vec3(0, 1, 0));
+        state.camera.pitch(-1.5f * input.deltamousey);
       }
 
       float speed = 0.02f;
@@ -479,10 +479,6 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
       if (input.controllers[0].move_right.state == true)
         state.camera.offset(speed*Vec3(1, 0, 0));
     }
-
-    state.lastmousex = input.mousex;
-    state.lastmousey = input.mousey;
-    state.lastmousez = input.mousez;
 
     state.camera = adapt(state.camera, state.rendercontext.luminance, 0.1f, 0.5f*dt);
 
