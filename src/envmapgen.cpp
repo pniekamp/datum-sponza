@@ -18,6 +18,12 @@
 #include <fstream>
 #include <iostream>
 
+#ifdef _WIN32
+#include <intrin.h>
+#else
+#include <x86intrin.h>
+#endif
+
 using namespace std;
 using namespace lml;
 using namespace leap;

@@ -560,8 +560,6 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
 
     if (sprites.begin(buildstate, state.rendercontext, state.resources))
     {
-      sprites.viewport(buildstate, viewport);
-
       sprites.push_text(buildstate, Vec2(viewport.width/2 - state.debugfont->width("Loading...")/2, viewport.height/2 + state.debugfont->height()/2), state.debugfont->height(), state.debugfont, "Loading...");
 
       sprites.finalise(buildstate);

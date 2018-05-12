@@ -10,7 +10,17 @@ if(UNIX OR MINGW)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffast-math")
 endif(UNIX OR MINGW)
 
-add_definitions(-DWIN32_LEAN_AND_MEAN -DNOMINMAX)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-braces -Wno-char-subscripts")
+endif()
+
+if(MSVC)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4244 /wd4800 /wd4267 /wd4146 /wd4814")
+endif(MSVC)
+
+if(WIN32)
+  add_definitions(-DWIN32_LEAN_AND_MEAN -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif(WIN32)
 
 set(SRCS ${SRCS} datumsponza.h datumsponza.cpp platform.h platform.cpp)
 
@@ -30,10 +40,10 @@ if(UNIX)
   target_link_libraries(datumsponza ${XCB_LIBRARIES})
 endif(UNIX)
 
-if(WIN32)
+if(MINGW)
   target_link_libraries(datumsponza mingw32)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
-endif(WIN32)
+endif(MINGW)
 
 #
 # envmapgen
