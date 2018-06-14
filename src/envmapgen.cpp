@@ -231,7 +231,7 @@ class Renderer
     Vulkan::Semaphore acquirecomplete;
     Vulkan::Semaphore rendercomplete;
 
-    Vulkan::StorageBuffer transferbuffer;
+    Vulkan::TransferBuffer transferbuffer;
     Vulkan::MemoryView<uint64_t> transfermemory;
 
     friend void initialise_renderer(Platform &platform, Renderer &renderer, int width, int height, size_t slotcount, size_t slabsize, size_t storagesize);
