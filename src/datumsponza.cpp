@@ -113,7 +113,7 @@ void datumsponza_init(PlatformInterface &platform)
   //state.camera.lookat(Vec3(0, 1, 0), Vec3(1, 1, 0), Vec3(0, 1, 0));
 
   state.camera.set_position(Vec3(-7.03893f, 5.22303f, 1.03818f));
-  state.camera.set_rotation(Quaternion3f(0.82396f, -0.0277191f, -0.56565f, -0.0190294f));
+  state.camera.set_rotation(Quaternion3(0.82396f, -0.0277191f, -0.56565f, -0.0190294f));
 
   state.mode = GameState::Startup;
 }
