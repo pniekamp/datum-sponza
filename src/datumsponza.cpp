@@ -519,8 +519,6 @@ void datumsponza_update(PlatformInterface &platform, GameInput const &input, flo
     platform.terminate();
   }
 
-  state.resourcetoken = state.resources.token();
-
   END_TIMED_BLOCK(Update)
 }
 
@@ -533,6 +531,8 @@ void datumsponza_render(PlatformInterface &platform, Viewport const &viewport)
   GameState &state = *static_cast<GameState*>(platform.gamememory.data);
 
   BEGIN_TIMED_BLOCK(Render, Color3(0.0f, 0.2f, 1.0f))
+
+  state.resourcetoken = state.resources.token();
 
   if (state.mode == GameState::Startup)
   {
